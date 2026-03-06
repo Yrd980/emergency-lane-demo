@@ -1,0 +1,62 @@
+{
+  "fps": 12,
+  "duration_seconds": 16,
+  "frame_interval_seconds": 1.0,
+  "location": "G60 沪昆高速 K12+300 测试路段",
+  "lane_label": "应急车道",
+  "vehicles": [
+    {
+      "plate": "沪A12345",
+      "color": [
+        62,
+        114,
+        255
+      ],
+      "lane": "emergency",
+      "y": 555,
+      "start_x": -260,
+      "end_x": 1260,
+      "start_s": 4.0,
+      "end_s": 11.0,
+      "width": 170,
+      "height": 82
+    },
+    {
+      "plate": "浙B67890",
+      "color": [
+        255,
+        108,
+        66
+      ],
+      "lane": "main",
+      "y": 395,
+      "start_x": -200,
+      "end_x": 1420,
+      "start_s": 0.0,
+      "end_s": 16.0,
+      "width": 170,
+      "height": 82
+    },
+    {
+      "plate": "苏C88888",
+      "color": [
+        94,
+        196,
+        129
+      ],
+      "lane": "main",
+      "y": 295,
+      "start_x": 1280,
+      "end_x": -220,
+      "start_s": 1.0,
+      "end_s": 14.0,
+      "width": 170,
+      "height": 82
+    }
+  ],
+  "expected_violation_plate": "沪A12345",
+  "expected_violation_range": [
+    4.0,
+    11.0
+  ]
+}
