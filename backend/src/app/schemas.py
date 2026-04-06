@@ -44,6 +44,7 @@ class EvidenceItem(BaseModel):
 
 class EventListItem(BaseModel):
     id: str
+    case_id: str | None = None
     plate_number: str
     lane_label: str
     status: str

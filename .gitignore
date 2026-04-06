@@ -14,3 +14,11 @@ storage/
 __pycache__/
 *.pyc
 
+
+.omx/
+.localref/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/

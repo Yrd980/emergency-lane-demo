@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     use_mock_zhipu: bool = False
     frame_interval_seconds: float = 1.0
     violation_hold_seconds: float = 3.0
+    case_clip_seconds: float = 15.0
     location_label: str = "G60 沪昆高速 K12+300 测试路段"
 
     @property
@@ -40,6 +41,14 @@ class Settings(BaseSettings):
     @property
     def frame_dir(self) -> Path:
         return self.storage_dir / "frames"
+
+    @property
+    def clip_dir(self) -> Path:
+        return self.storage_dir / "clips"
+
+    @property
+    def report_dir(self) -> Path:
+        return self.storage_dir / "reports"
 
     @property
     def db_path(self) -> Path:
@@ -65,7 +74,8 @@ class Settings(BaseSettings):
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self.frame_dir.mkdir(parents=True, exist_ok=True)
+        self.clip_dir.mkdir(parents=True, exist_ok=True)
+        self.report_dir.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()
-

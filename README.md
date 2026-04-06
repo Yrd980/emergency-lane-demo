@@ -1,85 +1,105 @@
-# 高速公路应急车道违章辅助举报原型
+# 高速公路应急车道违章辅助举报双端项目
 
-一个面向毕设演示的最小可交付原型：
+这是一个“双端协同”版本项目：
 
-- `backend/`：`uv + FastAPI` 后端，负责生成演示视频、调用智谱多模态模型、形成证据链、提供举报接口。
-- `frontend/`：Vite + TypeScript 前端，包含大屏概览、事件列表、移动端详情/举报预览。
-- `data/`：已生成的演示视频、封面图与样例清单，可直接用于答辩演示。
+- `backend/`：`uv + FastAPI`，负责演示视频分析、关键帧抽样、事件生成、案件归档、15 秒证据片段与正式举报文书生成。
+- `frontend/`：Vite + TypeScript 网页端，负责总览、事件列表、案件库、证据链与模拟举报展示。
+- `android/`：Kotlin + Compose 移动端，直接连接当前后端，负责案件查看、片段播放、文书预览与移动端举报展示。
+- `data/`：演示视频、封面图与清单。
+- `storage/`：运行时生成的关键帧、证据图、证据片段、报告文本与 SQLite 数据库。
 
-## 方案说明
+## 当前项目能力
 
-视频处理不是逐帧全量上云，而是：
+当前仓库不是单纯“看一张图识别”，而是完整的项目闭环：
 
 1. 连续播放演示视频；
-2. 后端按固定时间间隔抽取关键帧；
-3. 使用智谱视觉模型识别“是否占用应急车道 + 车牌号”；
-4. 再用本地时序融合规则把连续关键帧合成为一个完整违章事件；
-5. 自动保存 3 张关键证据图，并生成模拟举报记录。
+2. 后端按时间间隔抽取关键帧；
+3. 调用智谱视觉模型判断是否占用应急车道并读取车牌；
+4. 通过本地时序融合生成事件；
+5. 再按车牌/案件进行归档；
+6. 自动生成 15 秒证据片段与正式举报文书；
+7. 网页端与 Android 端展示同一套案件数据。
 
-这个设计更像毕业设计原型，而不是简单“看一张图”。
+## 启动后端
 
-## 后端启动
-
-```powershell
+```bash
 cd backend
-Copy-Item .env.example .env
+cp .env.example .env
 ```
 
-把 `.env` 里的 `ZHIPU_API_KEY` 改成你自己的智谱 Key。
-
-如果先只想本地演示，可保留：
+没有真实智谱 Key 时，可保留：
 
 ```env
 USE_MOCK_ZHIPU=true
 ```
 
-启动后端：
+启动：
 
-```powershell
+```bash
 cd backend
 uv run uvicorn src.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-## 前端启动
+## 启动网页端
 
-```powershell
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-默认前端会访问：
+默认访问 `http://127.0.0.1:8000/api`。
 
-```text
-http://127.0.0.1:8000/api
+## 启动 Android 端
+
+```bash
+cd android
+./gradlew assembleDebug
 ```
 
-## 演示流程
+说明：
 
-1. 打开前端首页；
-2. 点击“重新分析演示视频”；
-3. 后端生成或读取演示视频；
-4. 智谱/模拟模式识别占用应急车道车辆与车牌；
-5. 前端展示：
-   - 大屏概览；
-   - 疑似违章列表；
-   - 证据图片；
-   - 模拟举报结果。
+- 当前 `BuildConfig.API_BASE_URL` 默认是 `http://10.0.2.2:8000/api/`，适合 Android 模拟器连接本机后端；
+- 若用真机，请把 `android/app/build.gradle.kts` 中的地址改为你的局域网 IP；
+- 本地构建时可创建 `android/local.properties` 指向 SDK，例如 `sdk.dir=/home/yrd/Android/Sdk`。
 
-## 目录结构
+## 关键接口
 
-```text
-emergency-lane-demo/
-├─ backend/
-│  ├─ pyproject.toml
-│  └─ src/app/
-├─ frontend/
-│  ├─ src/
-│  └─ package.json
-├─ data/
-│  ├─ demo_highway.mp4
-│  ├─ demo_cover.jpg
-│  └─ demo_manifest.json
-└─ storage/
+- `GET /api/overview`
+- `GET /api/events`
+- `GET /api/events/{id}`
+- `POST /api/events/{id}/report`
+- `GET /api/cases`
+- `GET /api/cases/{id}`
+- `POST /api/cases/{id}/report`
+- `POST /api/tasks/analyze-demo`
+
+## 验证
+
+- 后端烟测：
+
+```bash
+cd backend
+uv run python -m unittest discover -s tests -v
 ```
 
+- 前端构建：
+
+```bash
+cd frontend
+npm run build
+```
+
+- Android 构建：
+
+```bash
+cd android
+./gradlew --no-daemon assembleDebug
+```
+
+## 文档
+
+- `docs/architecture-dual-end.md`：双端项目架构与职责分工
+- `docs/project-walkthrough.md`：项目运行流程与串联说明
+- `docs/source-newnew-digest.md`：参考工程 `newnew` 文档提炼
+- `docs/implementation-scope.md`：当前项目实现范围与模块拆解
