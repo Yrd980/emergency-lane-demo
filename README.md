@@ -163,6 +163,7 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
 ```
 
 - 若厂商 ROM 拒绝覆盖安装，可在设备确认安装授权后改用 `./scripts/install-debug.sh --clean`；
+- 默认安装路径不会在失败时自动卸载旧包，只有显式传入 `--clean` 才会执行“卸载后重装”；
 - 脚本会优先使用 `ANDROID_SERIAL`，未指定时自动挑选一个在线设备，并在安装成功后拉起 App；
 - 相比直接 `installDebug`，该脚本更适合当前仓库的真机联调：能固定单一设备并在必要时回退到“卸载后重装”。
 

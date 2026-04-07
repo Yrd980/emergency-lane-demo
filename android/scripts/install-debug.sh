@@ -99,6 +99,18 @@ run_clean_install() {
   run_pm_install
 }
 
+print_rejection_help() {
+  cat <<HELP >&2
+[install-debug] device rejected the install/update request.
+- Please unlock the phone and approve the vendor install/update prompt once.
+- The default path will NOT uninstall the existing app automatically.
+- If you intentionally want a remove-and-reinstall attempt, rerun with:
+  android/scripts/install-debug.sh --serial "$SERIAL" --clean ${API_BASE_URL:+--api-base-url "$API_BASE_URL"}
+- For diagnosis:
+  $ADB_BIN -s "$SERIAL" shell dumpsys package $PACKAGE_NAME | sed -n '1,120p'
+HELP
+}
+
 echo "[install-debug] adb install -r -t -> ${SERIAL}"
 set +e
 INSTALL_OUTPUT="$($ADB_BIN -s "$SERIAL" install -r -t "$APK_PATH" 2>&1)"
@@ -109,26 +121,34 @@ echo "$INSTALL_OUTPUT"
 if [[ $INSTALL_CODE -ne 0 ]]; then
   if grep -Eqi "Unable to open file|Can't open file" <<<"$INSTALL_OUTPUT"; then
     echo "[install-debug] streamed install failed; falling back to adb push + pm install"
-    if ! run_pm_install; then
-      CLEAN_INSTALL=1
+    set +e
+    FALLBACK_OUTPUT="$(run_pm_install 2>&1)"
+    FALLBACK_CODE=$?
+    set -e
+    echo "$FALLBACK_OUTPUT"
+    if [[ $FALLBACK_CODE -ne 0 ]]; then
+      if grep -Eqi "INSTALL_FAILED_ABORTED|User rejected permissions" <<<"$FALLBACK_OUTPUT"; then
+        if [[ $CLEAN_INSTALL -eq 1 ]]; then
+          print_rejection_help
+          run_clean_install || exit 1
+        else
+          print_rejection_help
+          exit 1
+        fi
+      fi
+      exit $FALLBACK_CODE
     fi
   elif grep -Eqi "INSTALL_FAILED_ABORTED|User rejected permissions" <<<"$INSTALL_OUTPUT"; then
-    CLEAN_INSTALL=1
+    if [[ $CLEAN_INSTALL -eq 1 ]]; then
+      print_rejection_help
+      run_clean_install || exit 1
+    else
+      print_rejection_help
+      exit 1
+    fi
   else
     exit $INSTALL_CODE
   fi
-fi
-
-if [[ $CLEAN_INSTALL -eq 1 ]]; then
-  cat <<HELP >&2
-[install-debug] device still rejected the replace/install request.
-- Please unlock the phone and approve the vendor install/update prompt once.
-- If the prompt already timed out, rerun with:
-  android/scripts/install-debug.sh --serial "$SERIAL" --clean ${API_BASE_URL:+--api-base-url "$API_BASE_URL"}
-- For diagnosis:
-  $ADB_BIN -s "$SERIAL" shell dumpsys package $PACKAGE_NAME | sed -n '1,120p'
-HELP
-  run_clean_install || exit 1
 fi
 
 "$ADB_BIN" -s "$SERIAL" shell monkey -p "$PACKAGE_NAME" -c android.intent.category.LAUNCHER 1 >/dev/null

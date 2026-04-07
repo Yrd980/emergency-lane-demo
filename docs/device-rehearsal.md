@@ -38,7 +38,7 @@ cd android
 ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
 ```
 
-`--clean` 会在安装失败后先卸载旧调试包，再重新安装。
+`--clean` 会在安装失败后先卸载旧调试包，再重新安装。默认安装路径不会在失败时自动卸载旧包；只有显式传入 `--clean` 才会执行 remove-and-reinstall。
 
 ### 为什么优先用脚本
 
@@ -46,6 +46,7 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
 
 - 优先锁定单一设备，避免多 adb 连接时把安装目标打歪；
 - 不走 Gradle/ddmlib 的安装通路，可绕开部分设备上 `pm install --no-streaming` 不兼容的问题；
+- 若设备只是弹出厂商确认框，脚本会先保住现有安装，不会未经显式参数就自动卸载；
 - 覆盖安装被厂商 ROM 拒绝时，可显式切到 `--clean` 路径完成卸载后重装。
 
 ### 当前已验证到的安装障碍
