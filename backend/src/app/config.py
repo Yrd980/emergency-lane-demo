@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     project_name: str = "高速公路应急车道违章辅助举报原型"
     app_env: str = "development"
     api_prefix: str = "/api"
-    cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
+    cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173"
     zhipu_api_key: str = ""
     zhipu_model: str = "glm-4v-flash"
     use_mock_zhipu: bool = False

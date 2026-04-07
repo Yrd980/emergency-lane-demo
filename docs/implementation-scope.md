@@ -15,6 +15,7 @@
 
 ## 2. 网页端模块
 - overview 与 latest run 展示
+- 深色驾驶舱式总览布局
 - run 历史面板
 - source selector
 - 事件列表筛选
@@ -31,6 +32,8 @@
 - 片段播放、证据查看
 - 复核字段展示与更新
 - 举报状态同步展示
+- 连接诊断卡与运行期 API 地址切换
+- 分层结构：model / network / viewmodel / ui
 
 ## 4. 这次明确不做的内容
 - 不并轨 `newnew` 的 CameraX / JNI / HyperLPR / Room 主链

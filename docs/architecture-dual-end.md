@@ -76,3 +76,16 @@
 4. 证据图、片段、文书的完整证据链；
 5. Web 与 Android 的角色分工；
 6. 从参考原型到当前主系统的演进过程。
+
+## 6. Android 当前代码边界（2026-04-08）
+
+Android 端已完成一轮“联调优先”的结构化拆分：
+
+- `MainActivity.kt`：只负责 Compose 入口挂载；
+- `model/MobileModels.kt`：承载 overview / run / case / connection / ui state 模型；
+- `network/`：承载 Retrofit 接口与 client 创建；
+- `viewmodel/MainViewModel.kt`：承载列表加载、案件复核、举报、API 地址切换；
+- `ui/`：承载连接诊断、总览、筛选、案件列表、案件详情等 Compose 组件；
+- `ApiBaseUrlStore.kt`：承载真机调试地址覆盖与恢复默认地址逻辑。
+
+这样处理后，Android 端仍然保持“移动协同查看 / 复核辅助”的定位，但不再由一个超大 Activity 同时承担 API、状态和 UI。

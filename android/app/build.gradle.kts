@@ -1,7 +1,33 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun resolveLocalOrGradleProperty(name: String): String? =
+    providers.gradleProperty(name).orNull ?: localProperties.getProperty(name)
+
+fun asBuildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val emulatorApiBaseUrl = resolveLocalOrGradleProperty("emergencyLaneEmulatorBaseUrl") ?: "http://10.0.2.2:8000/api/"
+val debugLanApiBaseUrl = resolveLocalOrGradleProperty("emergencyLaneDebugLanBaseUrl")
+val configuredApiBaseUrl = resolveLocalOrGradleProperty("emergencyLaneApiBaseUrl")
+val resolvedApiBaseUrl = configuredApiBaseUrl ?: debugLanApiBaseUrl ?: emulatorApiBaseUrl
+val resolvedApiBaseUrlSource = when {
+    configuredApiBaseUrl != null -> "gradle/local override"
+    debugLanApiBaseUrl != null -> "debug LAN default"
+    else -> "emulator fallback"
+}
+val lanApiBaseUrlHint = debugLanApiBaseUrl ?: "http://<LAN_IP>:8000/api/"
 
 android {
     namespace = "com.yrd.emergencylanemobile"
@@ -14,7 +40,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/\"")
+        buildConfigField("String", "API_BASE_URL", asBuildConfigString(resolvedApiBaseUrl))
+        buildConfigField("String", "API_BASE_URL_SOURCE", asBuildConfigString(resolvedApiBaseUrlSource))
+        buildConfigField("String", "API_BASE_URL_EMULATOR", asBuildConfigString(emulatorApiBaseUrl))
+        buildConfigField("String", "API_BASE_URL_LAN_HINT", asBuildConfigString(lanApiBaseUrlHint))
     }
 
     buildTypes {

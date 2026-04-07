@@ -72,6 +72,21 @@
 - Web：source selector、run panel、事件/案件筛选、case 编辑表单
 - Android：run 摘要、案件状态筛选、case review 信息展示与更新
 
+## 当前交付状态（2026-04-08）
+
+- **Android 真机联调底座已完成**：支持通过 `emergencyLaneApiBaseUrl`、`emergencyLaneDebugLanBaseUrl` 和 App 内 debug 诊断卡切换 API 地址；
+- **Android 结构已完成第一轮拆分**：`MainActivity` 仅保留入口，状态、API、模型、UI 组件拆分到独立目录；
+- **Web 大屏已完成第一轮重构**：当前是深色驾驶舱式总览，保留 source 选择、run 历史、案件筛选、证据链与举报闭环；
+- **参考基线**：`origin/newnew` 与 `.omx/drafts/origin-proposal-images-20260408/` 仅作为设计参考，不直接并入 CameraX / JNI / Room 主链。
+
+### Android 当前源码分层
+
+- `android/app/src/main/java/com/yrd/emergencylanemobile/model/`：DTO / UI state
+- `android/app/src/main/java/com/yrd/emergencylanemobile/network/`：Retrofit API 与 client
+- `android/app/src/main/java/com/yrd/emergencylanemobile/viewmodel/`：页面状态编排与联调逻辑
+- `android/app/src/main/java/com/yrd/emergencylanemobile/ui/`：Compose 页面与组件
+- `android/app/src/main/java/com/yrd/emergencylanemobile/ApiBaseUrlStore.kt`：运行期 API 地址覆盖存储
+
 ## 启动后端
 
 ```bash
@@ -102,6 +117,26 @@ npm run dev
 
 前端默认访问 `http://127.0.0.1:8000/api`。
 
+## 项目级 Playwright MCP
+
+当前仓库已支持项目级 Playwright MCP。
+
+如果你用 Codex 在这个仓库里做页面调试或联调，直接从仓库根目录启动即可读取项目里的 `.codex/config.toml`：
+
+```bash
+cd /home/yrd/documents/git_clone_code/etc/emergency-lane-demo
+codex
+```
+
+项目级配置默认会：
+
+- 启用 `@playwright/mcp@latest`
+- 打开 `vision,devtools` 能力
+- 把调试输出写入 `.playwright-mcp/`
+- 保存 trace，默认视口 `1440x960`
+
+当前仓库已在全局 Codex 配置中标记为 trusted。详细说明见 `PLAYWRIGHT_MCP.md`。
+
 ## 启动 Android 端
 
 ```bash
@@ -110,9 +145,11 @@ cd android
 ```
 
 说明：
-- `BuildConfig.API_BASE_URL` 默认是 `http://10.0.2.2:8000/api/`，适合 Android 模拟器连接本机后端；
-- 若用真机，请把 `android/app/build.gradle.kts` 中的地址改为局域网 IP；
-- 本地构建时可创建 `android/local.properties` 指向 SDK，例如 `sdk.dir=/home/yrd/Android/Sdk`。
+- 默认优先读取 `emergencyLaneApiBaseUrl`（支持 `android/local.properties`、项目/用户 `gradle.properties`、或命令行 `-PemergencyLaneApiBaseUrl=...`），未设置时再回退到模拟器地址 `http://10.0.2.2:8000/api/`；
+- 可选 `emergencyLaneDebugLanBaseUrl` 作为 debug 局域网默认值，用于真机联调构建；
+- App 内置 debug 连接诊断卡，可查看当前 API 地址、最近一次 overview 拉取结果，并临时切换到局域网地址而无需改源码；
+- 真机联调建议后端使用 `uv run uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload` 启动，并确保手机与开发机在同一网段；
+- 本地构建时可创建 `android/local.properties` 指向 SDK，例如 `sdk.dir=/home/yrd/Android/Sdk`，也可在其中加入 `emergencyLaneApiBaseUrl=http://<你的局域网IP>:8000/api/`。
 
 ## 关键接口
 
@@ -157,6 +194,12 @@ npm run build
 ```bash
 cd android
 ./gradlew --no-daemon assembleDebug
+```
+
+### Android（真机局域网联调构建）
+```bash
+cd android
+./gradlew --no-daemon assembleDebug -PemergencyLaneApiBaseUrl=http://<你的局域网IP>:8000/api/
 ```
 
 ## 文档

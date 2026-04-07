@@ -89,6 +89,14 @@ function formatDateTime(value?: string | null): string {
   }).format(new Date(value))
 }
 
+function formatNumber(value: number | undefined, digits = 0): string {
+  if (value === undefined || Number.isNaN(value)) return '--'
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -144,134 +152,269 @@ function runOptions(selected: string): string {
     .join('')
 }
 
-function renderHeader() {
+function renderCommandDeck() {
   const source = selectedSource()
   const latestRun = state.overview?.latest_run
+  const system = state.overview?.system
   return `
-    <header class="hero card">
-      <div>
-        <p class="eyebrow">高速公路应急车道违章辅助举报原型</p>
-        <h1>run 历史、source 选择、筛选与人工复核闭环</h1>
-        <p class="hero-copy">围绕 backend + web + android 主线补齐多次分析、案件复核、证据链与状态同步，不做 newnew 主链并轨。</p>
-      </div>
-      <div class="hero-actions">
-        <label class="field">
-          <span>分析视频源</span>
-          <select id="source-select">
-            ${state.sources
-              .map(
-                (item) => `<option value="${item.name}" ${state.analysisSourceName === item.name ? 'selected' : ''}>${escapeHtml(item.title)} · ${escapeHtml(item.name)}</option>`,
-              )
-              .join('')}
-          </select>
-        </label>
-        <button class="action-button" id="analyze-demo" ${state.actionLoading ? 'disabled' : ''}>
-          ${state.actionLoading ? '处理中...' : '发起分析'}
-        </button>
-        <div class="status-tip">
-          <strong>${latestRun ? escapeHtml(latestRun.id) : '暂无 run'}</strong>
-          <span>${latestRun ? escapeHtml(latestRun.message) : '等待分析任务启动'}</span>
+    <section class="command-deck panel-entrance">
+      <div class="command-copy">
+        <p class="eyebrow">双端协同答辩驾驶舱</p>
+        <h1>生命通道占用识别、证据归档与辅助举报闭环</h1>
+        <p class="deck-summary">围绕同一套 backend + Web + Android 数据链路，完整展示视频分析、事件融合、案件归档、证据链与人工复核同步。</p>
+        <div class="deck-tags">
+          <span>生命通道</span>
+          <span>公众参与</span>
+          <span>证据链闭环</span>
+          <span>双端协同</span>
         </div>
-        ${source ? `<small class="muted">当前源：${escapeHtml(source.title)} / ${source.duration_seconds}s / ${source.frame_count} 帧</small>` : ''}
-      </div>
-    </header>
-  `
-}
-
-function renderOverview() {
-  const summary = state.overview?.summary
-  const source = selectedSource()
-  return `
-    <section class="card overview-card">
-      <div class="section-heading">
-        <div>
-          <p class="panel-kicker">总览</p>
-          <h2>运行态势与当前 source</h2>
-        </div>
-        <span class="badge info">${summary?.active_source ?? '未选择'}</span>
-      </div>
-      <div class="stats-grid">
-        <article class="stat-card"><small>事件总数</small><strong>${summary?.total_events ?? '--'}</strong></article>
-        <article class="stat-card"><small>案件总数</small><strong>${summary?.total_cases ?? '--'}</strong></article>
-        <article class="stat-card"><small>待复核案件</small><strong>${summary?.pending_review_cases ?? '--'}</strong></article>
-        <article class="stat-card"><small>已举报案件</small><strong>${summary?.reported_cases ?? '--'}</strong></article>
-      </div>
-      ${source ? `
-        <div class="source-preview">
+        <div class="deck-meta">
           <div>
-            <div class="section-heading compact"><h3>${escapeHtml(source.title)}</h3><span>${escapeHtml(source.location)}</span></div>
-            <div class="meta-list">
-              <span>source_name: ${escapeHtml(source.name)}</span>
-              <span>FPS ${source.fps}</span>
-              <span>时长 ${source.duration_seconds}s</span>
-              <span>抽样 ${source.sample_interval_seconds}s</span>
-              <span>片段 ${source.case_clip_seconds}s</span>
-            </div>
+            <span>Web 角色</span>
+            <strong>${escapeHtml(system?.web_role ?? '总览 / 分析控制 / 驾驶舱讲解')}</strong>
           </div>
-          ${source.preview_url ? `<img class="source-image" src="${source.preview_url}" alt="${escapeHtml(source.title)}" />` : '<div class="empty-box">暂无封面</div>'}
+          <div>
+            <span>Android 角色</span>
+            <strong>${escapeHtml(system?.android_role ?? '真机联调 / 协同复核 / 举报状态同步')}</strong>
+          </div>
         </div>
-      ` : '<div class="empty-box">暂无 source</div>'}
+      </div>
+      <div class="command-actions">
+        <div class="action-cluster">
+          <label class="field compact-field">
+            <span>分析视频源</span>
+            <select id="source-select">
+              ${state.sources
+                .map(
+                  (item) => `<option value="${item.name}" ${state.analysisSourceName === item.name ? 'selected' : ''}>${escapeHtml(item.title)} · ${escapeHtml(item.name)}</option>`,
+                )
+                .join('')}
+            </select>
+          </label>
+          <button class="action-button" id="analyze-demo" ${state.actionLoading ? 'disabled' : ''}>
+            ${state.actionLoading ? '处理中...' : '发起分析'}
+          </button>
+        </div>
+        <div class="signal-card">
+          <span class="signal-label">Latest run</span>
+          <strong>${latestRun ? escapeHtml(latestRun.id) : '暂无 run'}</strong>
+          <p>${latestRun ? escapeHtml(latestRun.message) : '等待新的分析任务'}</p>
+          <div class="signal-progress"><span style="width:${latestRun?.progress_percent ?? 0}%"></span></div>
+          <small>${latestRun ? `${escapeHtml(latestRun.source_name)} · ${latestRun.event_count} 事件 / ${latestRun.case_count} 案件` : '可直接触发 demo 分析'}</small>
+        </div>
+        ${source ? `
+          <div class="source-stage">
+            <div class="source-stage-copy">
+              <span class="signal-label">当前 source</span>
+              <strong>${escapeHtml(source.title)}</strong>
+              <p>${escapeHtml(source.location)} · ${escapeHtml(source.lane_label)}</p>
+              <small>${source.duration_seconds}s · ${source.frame_count} 帧 · ${source.sample_interval_seconds}s 抽样</small>
+            </div>
+            ${source.preview_url ? `<img src="${source.preview_url}" alt="${escapeHtml(source.title)}" class="stage-preview" />` : '<div class="empty-box stage-empty">暂无封面</div>'}
+          </div>
+        ` : '<div class="empty-box stage-empty">暂无 source</div>'}
+      </div>
     </section>
   `
 }
 
-function renderRuns() {
+function renderMetricRail() {
+  const summary = state.overview?.summary
+  const latestRun = state.overview?.latest_run
+  const metrics = [
+    { label: '累计案件', value: formatNumber(summary?.total_cases), hint: '车辆级聚合后的案件池' },
+    { label: '待复核', value: formatNumber(summary?.pending_review_cases), hint: '需要人工确认的案件' },
+    { label: '已举报', value: formatNumber(summary?.reported_cases), hint: '已形成正式举报闭环' },
+    { label: '平均置信度', value: formatNumber(summary?.avg_confidence, 2), hint: '多帧识别融合后的信号强度' },
+    { label: '运行事件数', value: formatNumber(latestRun?.event_count), hint: '最新 run 识别出的事件' },
+  ]
+
+  return `
+    <section class="metric-rail panel-entrance">
+      ${metrics
+        .map(
+          (item) => `
+            <article class="metric-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+              <small>${item.hint}</small>
+            </article>
+          `,
+        )
+        .join('')}
+    </section>
+  `
+}
+
+function renderTrendBars() {
+  const trend = state.overview?.trend ?? []
+  if (!trend.length) return `<div class="empty-box">暂无趋势数据</div>`
+  const max = Math.max(...trend.map((item) => item.count), 1)
+  return `
+    <div class="trend-list">
+      ${trend
+        .map(
+          (item) => `
+            <div class="trend-row">
+              <div>
+                <strong>${escapeHtml(item.label)}</strong>
+                <small>${item.count} 条</small>
+              </div>
+              <div class="trend-bar"><span style="width:${Math.max((item.count / max) * 100, 10)}%"></span></div>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
+  `
+}
+
+function renderPipelineRail() {
+  const pipeline = state.overview?.pipeline ?? []
+  if (!pipeline.length) return `<div class="empty-box">暂无 pipeline 信息</div>`
+  return `
+    <div class="pipeline-rail">
+      ${pipeline
+        .map(
+          (step, index) => `
+            <article class="pipeline-step">
+              <span class="pipeline-index">0${index + 1}</span>
+              <div>
+                <strong>${escapeHtml(step.title)}</strong>
+                <p>${escapeHtml(step.summary)}</p>
+                <small>${escapeHtml(step.owner)} · ${step.evidence.map(escapeHtml).join(' / ')}</small>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `
+}
+
+function renderActivityFeed() {
+  const recentEvents = state.overview?.recent_events ?? state.events.slice(0, 4)
+  const recentCases = state.overview?.recent_cases ?? state.cases.slice(0, 4)
+  return `
+    <div class="activity-grid">
+      <div>
+        <div class="section-heading compact"><h3>最近事件</h3><span>${recentEvents.length}</span></div>
+        <div class="compact-feed">
+          ${recentEvents.length
+            ? recentEvents
+                .map(
+                  (item) => `
+                    <button class="feed-row compact" data-select-event="${item.id}">
+                      <div>
+                        <strong>${escapeHtml(item.plate_number)}</strong>
+                        <p>${escapeHtml(item.summary)}</p>
+                      </div>
+                      <span class="badge ${caseStatusBadge(item.status)}">${escapeHtml(item.status)}</span>
+                    </button>
+                  `,
+                )
+                .join('')
+            : '<div class="empty-box">暂无事件</div>'}
+        </div>
+      </div>
+      <div>
+        <div class="section-heading compact"><h3>最近案件</h3><span>${recentCases.length}</span></div>
+        <div class="compact-feed">
+          ${recentCases.length
+            ? recentCases
+                .map(
+                  (item) => `
+                    <button class="feed-row compact" data-select-case="${item.id}">
+                      <div>
+                        <strong>${escapeHtml(item.corrected_plate_number || item.plate_number)}</strong>
+                        <p>${escapeHtml(item.summary)}</p>
+                      </div>
+                      <span class="badge ${caseStatusBadge(item.status)}">${escapeHtml(item.status)}</span>
+                    </button>
+                  `,
+                )
+                .join('')
+            : '<div class="empty-box">暂无案件</div>'}
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function renderStoryGrid() {
+  return `
+    <section class="story-grid panel-entrance">
+      <article class="dashboard-panel narrative-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">态势趋势</p>
+            <h2>分析节奏与答辩讲解线索</h2>
+          </div>
+        </div>
+        ${renderTrendBars()}
+      </article>
+      <article class="dashboard-panel narrative-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">证据管线</p>
+            <h2>从抽帧到正式举报</h2>
+          </div>
+        </div>
+        ${renderPipelineRail()}
+      </article>
+      <article class="dashboard-panel narrative-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">协同视角</p>
+            <h2>事件与案件最近动态</h2>
+          </div>
+        </div>
+        ${renderActivityFeed()}
+      </article>
+    </section>
+  `
+}
+
+function renderRunHistory() {
   if (!state.runs.length) return `<div class="empty-box">暂无运行历史</div>`
   return `
-    <section class="card">
-      <div class="section-heading">
-        <div>
-          <p class="panel-kicker">Run 历史</p>
-          <h2>分析任务状态</h2>
-        </div>
-        <span class="badge info">${state.runs.length} 个</span>
-      </div>
-      <div class="run-list">
-        ${state.runs
-          .map(
-            (run) => `
-              <article class="run-item">
-                <div class="run-top">
-                  <strong>${escapeHtml(run.id)}</strong>
-                  <span class="badge ${runStatusBadge(run.status)}">${escapeHtml(run.status)}</span>
-                </div>
-                <div class="meta-list compact">
-                  <span>${escapeHtml(run.source_name)}</span>
-                  <span>${formatDateTime(run.started_at)}</span>
-                  <span>${run.event_count} 事件 / ${run.case_count} 案件</span>
-                  <span>${run.progress_percent}%</span>
-                </div>
-                <p class="muted">${escapeHtml(run.message || '暂无消息')}</p>
-              </article>
-            `,
-          )
-          .join('')}
-      </div>
-    </section>
+    <div class="run-stack">
+      ${state.runs
+        .slice(0, 6)
+        .map(
+          (run) => `
+            <article class="run-card">
+              <div class="run-card-top">
+                <strong>${escapeHtml(run.id)}</strong>
+                <span class="badge ${runStatusBadge(run.status)}">${escapeHtml(run.status)}</span>
+              </div>
+              <p>${escapeHtml(run.source_name)} · ${escapeHtml(run.message || '暂无消息')}</p>
+              <div class="meta-line">
+                <span>${formatDateTime(run.started_at)}</span>
+                <span>${run.event_count} 事件 / ${run.case_count} 案件</span>
+              </div>
+              <div class="signal-progress subtle"><span style="width:${run.progress_percent}%"></span></div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
   `
 }
 
 function renderFilterPanel(kind: 'event' | 'case') {
   const filters = kind === 'event' ? state.eventFilters : state.caseFilters
   return `
-    <section class="card">
-      <div class="section-heading">
-        <div>
-          <p class="panel-kicker">${kind === 'event' ? '事件筛选' : '案件筛选'}</p>
-          <h2>${kind === 'event' ? '按 status / plate / run / review 过滤事件' : '按 status / plate / run / review 过滤案件'}</h2>
-        </div>
+    <form class="filter-grid compact-filter" data-filter-form="${kind}">
+      <label class="field compact-field"><span>Status</span><select name="status">${statusOptions(filters.status)}</select></label>
+      <label class="field compact-field"><span>Review</span><select name="review_status"><option value="">全部复核</option>${reviewOptions(filters.review_status)}</select></label>
+      <label class="field compact-field"><span>Run</span><select name="run_id">${runOptions(filters.run_id)}</select></label>
+      <label class="field compact-field"><span>Plate</span><input name="plate" value="${escapeHtml(filters.plate)}" placeholder="输入车牌关键字" /></label>
+      <div class="inline-actions compact-actions">
+        <button class="action-button small" type="submit">应用</button>
+        <button class="action-button ghost small" type="button" data-reset-filter="${kind}">重置</button>
       </div>
-      <form class="filter-grid" data-filter-form="${kind}">
-        <label class="field"><span>Status</span><select name="status">${statusOptions(filters.status)}</select></label>
-        <label class="field"><span>Review</span><select name="review_status"><option value="">全部复核</option>${reviewOptions(filters.review_status)}</select></label>
-        <label class="field"><span>Run</span><select name="run_id">${runOptions(filters.run_id)}</select></label>
-        <label class="field"><span>Plate</span><input name="plate" value="${escapeHtml(filters.plate)}" placeholder="输入车牌关键字" /></label>
-        <div class="inline-actions filter-actions">
-          <button class="action-button" type="submit">应用筛选</button>
-          <button class="action-button ghost" type="button" data-reset-filter="${kind}">重置</button>
-        </div>
-      </form>
-    </section>
+    </form>
   `
 }
 
@@ -279,15 +422,15 @@ function renderEventList() {
   if (state.loading) return `<div class="loading-box">正在加载事件列表...</div>`
   if (!state.events.length) return `<div class="empty-box">当前筛选条件下暂无事件。</div>`
   return `
-    <div class="list-stack">
+    <div class="data-feed">
       ${state.events
         .map(
           (event) => `
-            <button class="list-row ${state.selectedEventId === event.id ? 'is-active' : ''}" data-select-event="${event.id}">
+            <button class="feed-row ${state.selectedEventId === event.id ? 'is-active' : ''}" data-select-event="${event.id}">
               <div>
                 <div class="row-title"><strong>${escapeHtml(event.plate_number)}</strong><span>${escapeHtml(event.id)}</span></div>
                 <p>${escapeHtml(event.summary)}</p>
-                <div class="meta-list compact">
+                <div class="meta-line">
                   <span>${escapeHtml(event.source_name)}</span>
                   <span>${escapeHtml(event.review_status)}</span>
                   <span>${escapeHtml(event.case_id ?? '未归档')}</span>
@@ -309,15 +452,15 @@ function renderCaseList() {
   if (state.loading) return `<div class="loading-box">正在加载案件列表...</div>`
   if (!state.cases.length) return `<div class="empty-box">当前筛选条件下暂无案件。</div>`
   return `
-    <div class="list-stack">
+    <div class="data-feed">
       ${state.cases
         .map(
           (item) => `
-            <button class="list-row ${state.selectedCaseId === item.id ? 'is-active' : ''}" data-select-case="${item.id}">
+            <button class="feed-row ${state.selectedCaseId === item.id ? 'is-active' : ''}" data-select-case="${item.id}">
               <div>
                 <div class="row-title"><strong>${escapeHtml(item.corrected_plate_number || item.plate_number)}</strong><span>${escapeHtml(item.id)}</span></div>
                 <p>${escapeHtml(item.summary)}</p>
-                <div class="meta-list compact">
+                <div class="meta-line">
                   <span>${escapeHtml(item.source_name)}</span>
                   <span>${escapeHtml(item.review_status)}</span>
                   <span>${item.event_count} 事件 / ${item.evidence_count} 证据</span>
@@ -334,74 +477,153 @@ function renderCaseList() {
   `
 }
 
-function renderEventDetail() {
+function renderOperationsGrid() {
+  return `
+    <section class="operations-grid panel-entrance">
+      <article class="dashboard-panel operations-panel run-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">运行看板</p>
+            <h2>Run 历史与任务状态</h2>
+          </div>
+          <span class="badge info">${state.runs.length}</span>
+        </div>
+        ${renderRunHistory()}
+      </article>
+      <article class="dashboard-panel operations-panel list-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">事件流</p>
+            <h2>按状态 / 车牌 / run 联动筛选</h2>
+          </div>
+          <span class="badge warning">${state.events.length}</span>
+        </div>
+        ${renderFilterPanel('event')}
+        ${renderEventList()}
+      </article>
+      <article class="dashboard-panel operations-panel list-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">案件库</p>
+            <h2>案件聚合与人工复核入口</h2>
+          </div>
+          <span class="badge info">${state.cases.length}</span>
+        </div>
+        ${renderFilterPanel('case')}
+        ${renderCaseList()}
+      </article>
+    </section>
+  `
+}
+
+function renderEventInspector() {
   const detail = state.selectedEvent
   if (state.detailLoading && !detail) return `<div class="loading-box">正在加载事件详情...</div>`
-  if (!detail) return `<div class="empty-box">选择事件后查看证据帧与时序信息。</div>`
+  if (!detail) return `<div class="empty-box">选择事件后查看证据帧、时间轴与举报入口。</div>`
   return `
-    <div class="detail-stack">
-      <div class="section-heading compact"><h3>${escapeHtml(detail.id)}</h3><span class="badge ${caseStatusBadge(detail.status)}">${escapeHtml(detail.status)}</span></div>
-      <div class="meta-list">
-        <span>run: ${escapeHtml(detail.run_id)}</span>
-        <span>source: ${escapeHtml(detail.source_name)}</span>
-        <span>review: ${escapeHtml(detail.review_status)}</span>
-        <span>case: ${escapeHtml(detail.case_id ?? '未归档')}</span>
+    <div class="workbench-stack">
+      <div class="inspector-topline">
+        <div>
+          <h3>${escapeHtml(detail.id)}</h3>
+          <p>${escapeHtml(detail.description)}</p>
+        </div>
+        <span class="badge ${caseStatusBadge(detail.status)}">${escapeHtml(detail.status)}</span>
       </div>
-      <p>${escapeHtml(detail.description)}</p>
+      <div class="meta-line wrap">
+        <span>run ${escapeHtml(detail.run_id)}</span>
+        <span>source ${escapeHtml(detail.source_name)}</span>
+        <span>review ${escapeHtml(detail.review_status)}</span>
+        <span>case ${escapeHtml(detail.case_id ?? '未归档')}</span>
+      </div>
       <div class="evidence-grid">
-        ${detail.evidence
-          .map(
-            (item) => `
-              <figure class="evidence-card">
-                <img src="${item.image_url}" alt="${escapeHtml(item.label)}" />
-                <figcaption>${escapeHtml(item.label)} · ${formatDateTime(item.captured_at)}</figcaption>
-              </figure>
-            `,
-          )
-          .join('')}
+        ${detail.evidence.length
+          ? detail.evidence
+              .map(
+                (item) => `
+                  <figure class="evidence-card">
+                    <img src="${item.image_url}" alt="${escapeHtml(item.label)}" />
+                    <figcaption>${escapeHtml(item.label)} · ${formatDateTime(item.captured_at)}</figcaption>
+                  </figure>
+                `,
+              )
+              .join('')
+          : '<div class="empty-box">暂无证据图</div>'}
       </div>
       <div class="timeline-box">
         ${(detail.raw_analysis.timeline ?? [])
-          .map((item) => `<div class="timeline-row"><span>${item.timestamp_seconds.toFixed(1)}s</span><p>${escapeHtml(item.description)}</p></div>`)
+          .map(
+            (item) => `
+              <div class="timeline-row">
+                <span>${item.timestamp_seconds.toFixed(1)}s</span>
+                <p>${escapeHtml(item.description)}</p>
+              </div>
+            `,
+          )
           .join('') || '<div class="empty-box">暂无时序记录</div>'}
       </div>
-      <button
-        class="action-button ${detail.status !== '待举报' ? 'ghost' : ''}"
-        data-report-event="${detail.id}"
-        ${state.actionLoading || detail.status !== '待举报' ? 'disabled' : ''}
-      >
-        ${detail.status === '已举报' ? '事件已举报' : detail.status === '待复核' ? '案件待复核，暂不可举报' : '提交事件模拟举报'}
-      </button>
+      <div class="workbench-actions">
+        <button
+          class="action-button ${detail.status !== '待举报' ? 'ghost' : ''}"
+          data-report-event="${detail.id}"
+          ${state.actionLoading || detail.status !== '待举报' ? 'disabled' : ''}
+        >
+          ${detail.status === '已举报' ? '事件已举报' : detail.status === '待复核' ? '案件待复核，暂不可举报' : '提交事件模拟举报'}
+        </button>
+      </div>
     </div>
   `
 }
 
-function renderCaseDetail() {
+function renderCaseWorkbench() {
   const detail = state.selectedCase
   if (state.detailLoading && !detail) return `<div class="loading-box">正在加载案件详情...</div>`
-  if (!detail) return `<div class="empty-box">选择案件后查看详情并编辑复核字段。</div>`
+  if (!detail) return `<div class="empty-box">选择案件后查看证据链、片段、文书与复核字段。</div>`
   return `
-    <div class="detail-stack">
-      <div class="section-heading compact">
+    <div class="workbench-stack">
+      <div class="inspector-topline">
         <div>
-          <h3>${escapeHtml(detail.id)}</h3>
-          <p class="muted">${escapeHtml(detail.source_name)} / run ${escapeHtml(detail.run_id)}</p>
+          <h3>${escapeHtml(detail.corrected_plate_number || detail.plate_number)}</h3>
+          <p>${escapeHtml(detail.id)} · ${escapeHtml(detail.source_name)} / run ${escapeHtml(detail.run_id)}</p>
         </div>
         <span class="badge ${caseStatusBadge(detail.status)}">${escapeHtml(detail.status)}</span>
       </div>
-      <div class="meta-list">
-        <span>原始车牌：${escapeHtml(detail.plate_number)}</span>
-        <span>修正车牌：${escapeHtml(detail.corrected_plate_number ?? '未修正')}</span>
-        <span>复核状态：${escapeHtml(detail.review_status)}</span>
-        <span>更新时间：${formatDateTime(detail.updated_at)}</span>
+      <div class="meta-line wrap">
+        <span>原始车牌 ${escapeHtml(detail.plate_number)}</span>
+        <span>复核 ${escapeHtml(detail.review_status)}</span>
+        <span>更新时间 ${formatDateTime(detail.updated_at)}</span>
       </div>
-      ${detail.clip_url ? `<video class="clip-video" controls src="${detail.clip_url}"></video>` : '<div class="empty-box">暂无证据片段</div>'}
+      <div class="case-proof-grid">
+        <div class="clip-shell">
+          <div class="section-heading compact"><h4>15 秒证据片段</h4><span>${detail.events.length} 条事件</span></div>
+          ${detail.clip_url ? `<video class="clip-video" controls src="${detail.clip_url}"></video>` : '<div class="empty-box">暂无证据片段</div>'}
+        </div>
+        <div class="report-shell">
+          <div class="section-heading compact"><h4>正式举报文书</h4><span>${escapeHtml(detail.review_status)}</span></div>
+          <div class="report-box">${escapeHtml(detail.report_content || '暂无文书，先完成复核再生成。').replaceAll('\n', '<br />')}</div>
+          ${detail.report_file_url ? `<a class="action-link" href="${detail.report_file_url}" target="_blank" rel="noreferrer">打开 TXT 文书</a>` : ''}
+        </div>
+      </div>
+      <div class="section-heading compact"><h4>关键证据图</h4><span>${detail.evidence.length} 张</span></div>
+      <div class="evidence-grid">
+        ${detail.evidence.length
+          ? detail.evidence
+              .map(
+                (item) => `
+                  <figure class="evidence-card">
+                    <img src="${item.image_url}" alt="${escapeHtml(item.label)}" />
+                    <figcaption>${escapeHtml(item.label)} · ${formatDateTime(item.captured_at)}</figcaption>
+                  </figure>
+                `,
+              )
+              .join('')
+          : '<div class="empty-box">暂无证据图</div>'}
+      </div>
       <form class="editor-grid" id="case-editor-form">
-        <label class="field">
+        <label class="field compact-field">
           <span>corrected_plate_number</span>
           <input id="case-corrected-plate" value="${escapeHtml(state.caseForm.corrected_plate_number)}" placeholder="可人工修正车牌" />
         </label>
-        <label class="field">
+        <label class="field compact-field">
           <span>review_status</span>
           <select id="case-review-status">${reviewOptions(state.caseForm.review_status)}</select>
         </label>
@@ -409,7 +631,7 @@ function renderCaseDetail() {
           <span>operator_note</span>
           <textarea id="case-operator-note" rows="4" placeholder="记录人工复核意见">${escapeHtml(state.caseForm.operator_note)}</textarea>
         </label>
-        <div class="inline-actions full-span">
+        <div class="inline-actions full-span workbench-actions">
           <button class="action-button" type="submit" ${state.actionLoading ? 'disabled' : ''}>保存复核信息</button>
           <button
             class="action-button ${detail.status !== '待举报' ? 'ghost' : ''}"
@@ -419,39 +641,63 @@ function renderCaseDetail() {
           >
             ${detail.status === '已举报' ? '案件已举报' : detail.status === '待复核' ? '待复核，暂不可举报' : '提交案件模拟举报'}
           </button>
-          ${detail.report_file_url ? `<a class="action-link" href="${detail.report_file_url}" target="_blank" rel="noreferrer">打开 TXT 文书</a>` : ''}
         </div>
       </form>
-      <div class="section-heading compact"><h4>关联事件</h4><span>${detail.events.length} 条</span></div>
+      <div class="section-heading compact"><h4>关联事件时间轴</h4><span>${detail.events.length} 条</span></div>
       <div class="timeline-box">
         ${detail.events
           .map(
-            (event) => `<div class="timeline-row"><span>${escapeHtml(event.id)}</span><p>${escapeHtml(event.status)} / ${formatDateTime(event.first_seen)} / ${escapeHtml(event.plate_number)}</p></div>`,
+            (event) => `
+              <div class="timeline-row">
+                <span>${escapeHtml(event.id)}</span>
+                <p>${escapeHtml(event.status)} / ${formatDateTime(event.first_seen)} / ${escapeHtml(event.plate_number)}</p>
+              </div>
+            `,
           )
-          .join('')}
+          .join('') || '<div class="empty-box">暂无关联事件</div>'}
       </div>
-      <div class="section-heading compact"><h4>操作备注</h4><span>${escapeHtml(detail.review_status)}</span></div>
-      <p class="muted">${escapeHtml(detail.operator_note || '暂无人工备注')}</p>
     </div>
+  `
+}
+
+function renderWorkbench() {
+  return `
+    <section class="workbench-grid panel-entrance">
+      <article class="dashboard-panel workbench-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">事件工作台</p>
+            <h2>证据帧、时间轴与事件举报</h2>
+          </div>
+          <span class="badge info">${escapeHtml(state.selectedEventId ?? '未选择')}</span>
+        </div>
+        ${renderEventInspector()}
+      </article>
+      <article class="dashboard-panel workbench-panel case-workbench-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">案件工作台</p>
+            <h2>证据链、片段、文书与人工复核</h2>
+          </div>
+          <span class="badge info">${escapeHtml(state.selectedCaseId ?? '未选择')}</span>
+        </div>
+        ${renderCaseWorkbench()}
+      </article>
+    </section>
   `
 }
 
 function render() {
   app!.innerHTML = `
     <div class="page-shell">
-      ${renderHeader()}
+      <div class="ambient-grid"></div>
+      ${renderCommandDeck()}
       ${state.error ? `<div class="global-error">${escapeHtml(state.error)}</div>` : ''}
       ${state.toast ? `<div class="global-toast">${escapeHtml(state.toast)}</div>` : ''}
-      <main class="layout-grid">
-        ${renderOverview()}
-        ${renderRuns()}
-        ${renderFilterPanel('event')}
-        ${renderFilterPanel('case')}
-        <section class="card"><div class="section-heading"><h2>事件列表</h2><span class="badge warning">${state.events.length}</span></div>${renderEventList()}</section>
-        <section class="card"><div class="section-heading"><h2>案件列表</h2><span class="badge info">${state.cases.length}</span></div>${renderCaseList()}</section>
-        <section class="card"><div class="section-heading"><h2>事件详情</h2><span class="badge info">${escapeHtml(state.selectedEventId ?? '未选择')}</span></div>${renderEventDetail()}</section>
-        <section class="card"><div class="section-heading"><h2>案件详情 / 人工复核</h2><span class="badge info">${escapeHtml(state.selectedCaseId ?? '未选择')}</span></div>${renderCaseDetail()}</section>
-      </main>
+      ${renderMetricRail()}
+      ${renderStoryGrid()}
+      ${renderOperationsGrid()}
+      ${renderWorkbench()}
     </div>
   `
   bindEvents()
