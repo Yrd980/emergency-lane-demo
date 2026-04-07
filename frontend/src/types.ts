@@ -1,9 +1,47 @@
+export type CaseStatus = '待复核' | '待举报' | '已举报'
+export type ReviewStatus = '待复核' | '复核通过' | '复核退回'
+
+export interface SourceSummary {
+  name: string
+  title: string
+  video_url: string
+  preview_url?: string | null
+  fps: number
+  frame_count: number
+  duration_seconds: number
+  sample_interval_seconds: number
+  case_clip_seconds: number
+  reference_mode: string
+  location: string
+  lane_label: string
+}
+
+export interface RunSummary {
+  id: string
+  source_name: string
+  source_video: string
+  status: 'running' | 'done' | 'failed'
+  mode: string
+  started_at?: string | null
+  finished_at?: string | null
+  progress_percent: number
+  message: string
+  error_message?: string | null
+  events_created: number
+  cases_created: number
+  event_count: number
+  case_count: number
+}
 
 export interface EventSummary {
   id: string
+  run_id: string
   case_id?: string | null
   plate_number: string
-  status: '待举报' | '已举报'
+  corrected_plate_number?: string | null
+  review_status: ReviewStatus
+  source_name: string
+  status: CaseStatus
   location: string
   lane_name: string
   first_seen: string
@@ -21,7 +59,6 @@ export interface EvidenceItem {
 }
 
 export interface EventDetail extends EventSummary {
-  source_name: string
   description: string
   vehicle_count: number
   reported_at?: string | null
@@ -41,8 +78,13 @@ export interface EventDetail extends EventSummary {
 
 export interface CaseSummary {
   id: string
+  run_id: string
+  source_name: string
   plate_number: string
-  status: '待举报' | '已举报'
+  corrected_plate_number?: string | null
+  review_status: ReviewStatus
+  operator_note: string
+  status: CaseStatus
   location: string
   confidence: number
   summary: string
@@ -86,24 +128,25 @@ export interface OverviewResponse {
     active_source: string
     total_cases: number
     reported_cases: number
+    pending_review_cases: number
   }
+  latest_run?: RunSummary | null
+  runs: RunSummary[]
   trend: Array<{
     label: string
     count: number
   }>
   recent_events: EventSummary[]
   recent_cases: CaseSummary[]
-  source: {
-    name: string
-    video_url: string
-    preview_url: string
-    fps: number
-    frame_count: number
-    duration_seconds: number
-    sample_interval_seconds: number
-    case_clip_seconds: number
-    reference_mode: string
-  }
+  source: SourceSummary
+  sources: SourceSummary[]
+  pipeline: Array<{
+    key: string
+    title: string
+    owner: string
+    summary: string
+    evidence: string[]
+  }>
   system: {
     web_role: string
     android_role: string
@@ -113,14 +156,17 @@ export interface OverviewResponse {
 
 export interface AnalyzeTaskResponse {
   task_id: string
+  run_id: string
   mode: string
+  source_name: string
   analyzed_frames: number
   events_created: number
   cases_created: number
   started_at: string
   finished_at: string
   message: string
-  source: OverviewResponse['source']
+  source: SourceSummary
+  run: RunSummary
 }
 
 export interface ReportResponse {
@@ -130,4 +176,22 @@ export interface ReportResponse {
   report_number: string
   reported_at: string
   message: string
+}
+
+export interface CaseUpdateRequest {
+  corrected_plate_number?: string | null
+  operator_note?: string | null
+  review_status?: ReviewStatus
+  status?: Exclude<CaseStatus, '已举报'>
+}
+
+export interface RunDetail extends RunSummary {
+  events: EventSummary[]
+  cases: Array<{
+    id: string
+    plate_number: string
+    corrected_plate_number?: string | null
+    review_status: ReviewStatus
+    status: CaseStatus
+  }>
 }

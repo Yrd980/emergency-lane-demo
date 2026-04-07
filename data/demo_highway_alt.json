@@ -1,0 +1,67 @@
+{
+  "name": "demo_highway_alt.mp4",
+  "title": "演示视频 B / 分流路段",
+  "video_filename": "demo_highway_alt.mp4",
+  "preview_filename": "demo_highway_alt.jpg",
+  "fps": 12,
+  "duration_seconds": 16,
+  "frame_interval_seconds": 1.0,
+  "location": "G60 沪昆高速 K18+900 分流测试路段",
+  "lane_label": "应急车道",
+  "vehicles": [
+    {
+      "plate": "皖D55667",
+      "color": [
+        255,
+        179,
+        71
+      ],
+      "lane": "emergency",
+      "y": 545,
+      "start_x": -240,
+      "end_x": 1300,
+      "start_s": 2.5,
+      "end_s": 9.5,
+      "width": 170,
+      "height": 82
+    },
+    {
+      "plate": "沪F10293",
+      "color": [
+        93,
+        211,
+        158
+      ],
+      "lane": "main",
+      "y": 390,
+      "start_x": -220,
+      "end_x": 1380,
+      "start_s": 0.0,
+      "end_s": 16.0,
+      "width": 170,
+      "height": 82
+    },
+    {
+      "plate": "苏A77118",
+      "color": [
+        114,
+        161,
+        255
+      ],
+      "lane": "main",
+      "y": 292,
+      "start_x": 1280,
+      "end_x": -260,
+      "start_s": 1.5,
+      "end_s": 13.5,
+      "width": 170,
+      "height": 82
+    }
+  ],
+  "expected_violation_plate": "皖D55667",
+  "expected_violation_range": [
+    2.5,
+    9.5
+  ],
+  "reference_mode": "网页大屏 + Android 移动端"
+}
