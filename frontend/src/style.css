@@ -113,6 +113,48 @@ video {
   border-radius: 24px;
 }
 
+.situation-ribbon {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ribbon-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(102, 217, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(7, 19, 35, 0.88), rgba(6, 16, 29, 0.82)),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.08), transparent 60%);
+  box-shadow: 0 18px 36px rgba(1, 8, 18, 0.28);
+}
+
+.ribbon-card span,
+.ribbon-card p {
+  display: block;
+}
+
+.ribbon-card span {
+  color: #66d9ff;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ribbon-card strong {
+  display: block;
+  margin-top: 10px;
+  color: #f7fbff;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.ribbon-card p {
+  margin: 10px 0 0;
+  color: rgba(214, 229, 255, 0.74);
+}
+
 .command-copy,
 .command-actions,
 .dashboard-panel {
@@ -144,7 +186,7 @@ video {
 }
 
 .command-copy h1 {
-  max-width: 10ch;
+  max-width: 12ch;
   font-size: clamp(34px, 3.8vw, 56px);
   line-height: 1.02;
 }
@@ -161,6 +203,7 @@ video {
 .deck-tags,
 .deck-meta,
 .metric-rail,
+.mission-strip,
 .story-grid,
 .operations-grid,
 .workbench-grid,
@@ -314,6 +357,11 @@ video {
 .metric-rail {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
+  margin-top: 14px;
+}
+
+.mission-strip {
+  grid-template-columns: 1.15fr 0.85fr;
   margin-top: 18px;
 }
 
@@ -359,6 +407,53 @@ video {
   grid-template-columns: 1fr auto;
   align-items: center;
   margin-bottom: 4px;
+}
+
+.mission-chip-grid,
+.rehearsal-list {
+  display: grid;
+  gap: 12px;
+}
+
+.mission-chip-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mission-chip,
+.rehearsal-step {
+  border-radius: 18px;
+  border: 1px solid rgba(102, 217, 255, 0.1);
+  background: rgba(5, 14, 27, 0.62);
+  padding: 16px;
+}
+
+.mission-chip span,
+.rehearsal-step span {
+  display: block;
+  color: rgba(148, 196, 255, 0.8);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.mission-chip strong,
+.rehearsal-step strong {
+  display: block;
+  margin-top: 8px;
+  color: #f7fbff;
+}
+
+.mission-chip small,
+.rehearsal-step p {
+  display: block;
+  margin: 8px 0 0;
+  color: rgba(210, 226, 255, 0.75);
+}
+
+.rehearsal-step.is-highlight {
+  border-color: rgba(56, 189, 248, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.22);
+  background: linear-gradient(180deg, rgba(12, 34, 58, 0.92), rgba(5, 14, 27, 0.78));
 }
 
 .section-heading.compact {
@@ -718,11 +813,13 @@ video {
 }
 
 @media (max-width: 1440px) {
+  .situation-ribbon,
   .metric-rail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .story-grid,
+  .mission-strip,
   .operations-grid,
   .workbench-grid {
     grid-template-columns: 1fr;
@@ -738,7 +835,9 @@ video {
 
 @media (max-width: 1100px) {
   .command-deck,
+  .situation-ribbon,
   .source-stage,
+  .mission-chip-grid,
   .activity-grid,
   .case-proof-grid,
   .compact-filter,

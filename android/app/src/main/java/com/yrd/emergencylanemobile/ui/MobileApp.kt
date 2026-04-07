@@ -88,10 +88,15 @@ fun MobileApp() {
                     item {
                         CaseDetailSection(
                             detail = state.selectedCase,
+                            localDraft = state.localDraft,
                             busy = state.busy,
                             onSave = { caseId, correctedPlate, note, reviewStatus ->
                                 viewModel.updateCaseReview(caseId, correctedPlate, note, reviewStatus)
                             },
+                            onSaveLocalDraft = { caseId, localPlate, sceneNote, reviewStatus ->
+                                viewModel.saveLocalDraft(caseId, localPlate, sceneNote, reviewStatus)
+                            },
+                            onClearLocalDraft = { caseId -> viewModel.clearLocalDraft(caseId) },
                             onReport = { caseId -> viewModel.reportCase(caseId) },
                         )
                     }

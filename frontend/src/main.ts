@@ -218,6 +218,52 @@ function renderCommandDeck() {
   `
 }
 
+function renderSituationRibbon() {
+  const summary = state.overview?.summary
+  const latestRun = state.overview?.latest_run
+  const source = selectedSource()
+  const cards = [
+    {
+      title: '分析主链',
+      body: latestRun
+        ? `${escapeHtml(latestRun.source_name)} · ${escapeHtml(latestRun.status)} · ${formatDateTime(latestRun.finished_at || latestRun.started_at)}`
+        : '等待新的 analysis run',
+      meta: latestRun ? `${latestRun.event_count} 事件 / ${latestRun.case_count} 案件` : '可直接从当前 source 发起分析',
+    },
+    {
+      title: '双端协同',
+      body: 'Web 大屏主控 + Android 真机协同复核',
+      meta: '端侧已并入本地缓存层，弱网时继续支撑讲解与复核。',
+    },
+    {
+      title: '证据闭环',
+      body: `${formatNumber(summary?.pending_review_cases)} 待复核 / ${formatNumber(summary?.reported_cases)} 已举报`,
+      meta: '事件 → 案件 → 证据图 → 15 秒片段 → 正式文书',
+    },
+    {
+      title: '当前剧本',
+      body: source ? `${escapeHtml(source.title)} / ${escapeHtml(source.location)}` : '暂无 source',
+      meta: '答辩路径：选源 → 分析 → 事件/案件联动 → 复核 → 模拟举报',
+    },
+  ]
+
+  return `
+    <section class="situation-ribbon panel-entrance">
+      ${cards
+        .map(
+          (item) => `
+            <article class="ribbon-card">
+              <span>${item.title}</span>
+              <strong>${item.body}</strong>
+              <p>${item.meta}</p>
+            </article>
+          `,
+        )
+        .join('')}
+    </section>
+  `
+}
+
 function renderMetricRail() {
   const summary = state.overview?.summary
   const latestRun = state.overview?.latest_run
@@ -242,6 +288,95 @@ function renderMetricRail() {
           `,
         )
         .join('')}
+    </section>
+  `
+}
+
+function renderMissionStrip() {
+  const source = selectedSource()
+  const latestRun = state.overview?.latest_run
+  const focusCase = state.selectedCase ?? null
+  const rehearsalSteps = [
+    {
+      label: '01 选源分析',
+      title: source ? `${source.title}` : '选择演示视频源',
+      detail: source ? `${source.duration_seconds}s / ${source.frame_count} 帧 / ${source.sample_interval_seconds}s 抽样` : '从 data/ 预置素材中切换演示源',
+    },
+    {
+      label: '02 run 观察',
+      title: latestRun ? `${latestRun.id} · ${latestRun.status}` : '等待新的 run',
+      detail: latestRun
+        ? `${latestRun.source_name} / ${latestRun.event_count} 事件 / ${latestRun.case_count} 案件 / ${latestRun.progress_percent}%`
+        : '触发分析后观察任务状态与历史 run',
+    },
+    {
+      label: '03 人工复核',
+      title: focusCase ? `${focusCase.corrected_plate_number || focusCase.plate_number}` : '选择案件进入工作台',
+      detail: focusCase
+        ? `${focusCase.review_status} / ${focusCase.status} / ${focusCase.evidence.length} 张证据`
+        : '修改车牌、备注与复核状态，确认 15 秒片段与文书',
+    },
+    {
+      label: '04 双端同步',
+      title: 'Web 驾驶舱 + Android 协同',
+      detail: '以 FastAPI 为最终事实源，保持 run / case / report 状态一致',
+    },
+  ]
+
+  return `
+    <section class="mission-strip panel-entrance">
+      <article class="dashboard-panel mission-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">答辩彩排路径</p>
+            <h2>一屏讲清“输入源 → 识别融合 → 案件复核 → 双端协同”</h2>
+          </div>
+          <span class="badge info">闭环保留</span>
+        </div>
+        <div class="mission-chip-grid">
+          <div class="mission-chip">
+            <span>当前 source</span>
+            <strong>${escapeHtml(source?.title ?? '暂无 source')}</strong>
+            <small>${escapeHtml(source?.location ?? '待选择')} · ${escapeHtml(source?.lane_label ?? '应急车道场景')}</small>
+          </div>
+          <div class="mission-chip">
+            <span>最新 run</span>
+            <strong>${escapeHtml(latestRun?.id ?? '等待触发')}</strong>
+            <small>${latestRun ? `${escapeHtml(latestRun.status)} · ${latestRun.progress_percent}% · ${latestRun.event_count} 事件` : '通过“发起分析”进入演示'}</small>
+          </div>
+          <div class="mission-chip">
+            <span>案件复核焦点</span>
+            <strong>${escapeHtml(focusCase ? focusCase.corrected_plate_number || focusCase.plate_number : '等待选中案件')}</strong>
+            <small>${focusCase ? `${escapeHtml(focusCase.review_status)} / ${escapeHtml(focusCase.status)}` : '保留复核、文书、举报动作'}</small>
+          </div>
+          <div class="mission-chip">
+            <span>联动原则</span>
+            <strong>FastAPI 单一事实源</strong>
+            <small>Web 负责驾驶舱展示，Android 负责现场协同复核</small>
+          </div>
+        </div>
+      </article>
+      <article class="dashboard-panel rehearsal-panel">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">评委演示脚本</p>
+            <h2>现场讲解顺序与当前重点</h2>
+          </div>
+        </div>
+        <div class="rehearsal-list">
+          ${rehearsalSteps
+            .map(
+              (step, index) => `
+                <div class="rehearsal-step ${index === 2 && focusCase ? 'is-highlight' : ''}">
+                  <span>${step.label}</span>
+                  <strong>${escapeHtml(step.title)}</strong>
+                  <p>${escapeHtml(step.detail)}</p>
+                </div>
+              `,
+            )
+            .join('')}
+        </div>
+      </article>
     </section>
   `
 }
@@ -692,9 +827,11 @@ function render() {
     <div class="page-shell">
       <div class="ambient-grid"></div>
       ${renderCommandDeck()}
+      ${renderSituationRibbon()}
       ${state.error ? `<div class="global-error">${escapeHtml(state.error)}</div>` : ''}
       ${state.toast ? `<div class="global-toast">${escapeHtml(state.toast)}</div>` : ''}
       ${renderMetricRail()}
+      ${renderMissionStrip()}
       ${renderStoryGrid()}
       ${renderOperationsGrid()}
       ${renderWorkbench()}

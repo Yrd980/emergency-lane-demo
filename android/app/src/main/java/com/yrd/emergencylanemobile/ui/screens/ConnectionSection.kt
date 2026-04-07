@@ -47,7 +47,7 @@ fun ConnectionSection(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "先确认当前 API 地址、最近一次总览拉取结果与失败原因，再做案件复核与同步。",
+                text = "先确认当前 API 地址、最近一次总览拉取结果与缓存状态，再做案件复核、端侧草稿与举报同步。",
                 color = Color(0xFFD7E3FF),
             )
             InfoCard(title = "当前 API", body = connection.activeBaseUrl)
@@ -55,15 +55,38 @@ fun ConnectionSection(
                 MetricChip("来源", connection.activeSource)
                 MetricChip("默认", connection.buildDefaultSource)
                 MetricChip("最近同步", connection.lastSuccessAt ?: "暂无")
+                MetricChip("内容源", if (connection.usingCachedData) "本地缓存" else "实时后端")
                 if (connection.hasRuntimeOverride) {
                     MetricChip("调试覆盖", "已启用")
                 }
             }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricChip("缓存案件", connection.cacheCaseCount.toString())
+                MetricChip("缓存 run", connection.cacheRunCount.toString())
+                MetricChip("缓存状态", if (connection.usingCachedData) "兜底中" else "在线")
+                MetricChip("草稿", if (state.localDraft == null) "暂无" else "已缓存")
+            }
             connection.lastOverviewSummary?.let { InfoCard(title = "总览回执", body = it) }
             connection.lastError?.let { InfoCard(title = "最近错误", body = it, accent = Color(0xFFFCA5A5)) }
+            if (connection.cacheAvailable) {
+                InfoCard(
+                    title = "本地缓存层",
+                    body = buildString {
+                        append("最近缓存 ${connection.cacheStatus ?: "未知"}")
+                        append(" · ${connection.cacheRunCount} 个 run / ${connection.cacheCaseCount} 个案件")
+                        if (connection.usingCachedData) append(" · 当前已自动回退到本地缓存快照")
+                    },
+                )
+            }
+            state.localDraft?.let { draft ->
+                InfoCard(
+                    title = "端侧草稿",
+                    body = "最近保存 ${draft.savedAt ?: "未知"} · 输入方式 ${draft.inputMode} · plate ${draft.localPlateCandidate.ifBlank { "--" }}",
+                )
+            }
             InfoCard(
                 title = "联调提示",
-                body = "后端请使用 0.0.0.0 或开发机局域网 IP 启动；真机与开发机需在同一网段；当前真机可直接通过下方调试地址切换入口覆盖 API。",
+                body = "后端请使用 0.0.0.0 或开发机局域网 IP 启动；真机与开发机需在同一网段；若现场网络抖动，可先保存端侧草稿，再回到在线状态提交到 FastAPI。",
             )
             if (BuildConfig.DEBUG) {
                 OutlinedTextField(

@@ -113,6 +113,25 @@ data class MobileReportResponse(
     val message: String,
 )
 
+data class MobileLocalDraft(
+    val caseId: String,
+    val localPlateCandidate: String = "",
+    val sceneNote: String = "",
+    val reviewStatus: String = "待复核",
+    val inputMode: String = "manual-device-cache",
+    val savedAt: String? = null,
+)
+
+data class MobileSyncSnapshot(
+    val cachedAt: String,
+    val overview: MobileOverview? = null,
+    val runs: List<MobileRunSummary> = emptyList(),
+    val cases: List<MobileCaseSummary> = emptyList(),
+    val selectedCaseId: String? = null,
+    val selectedCase: MobileCaseDetail? = null,
+    val selectedStatusFilter: String? = null,
+)
+
 data class MobileConnectionState(
     val activeBaseUrl: String = "",
     val activeSource: String = "",
@@ -121,6 +140,11 @@ data class MobileConnectionState(
     val emulatorFallbackBaseUrl: String = "",
     val lanHintBaseUrl: String = "",
     val hasRuntimeOverride: Boolean = false,
+    val cacheAvailable: Boolean = false,
+    val cacheStatus: String? = null,
+    val cacheRunCount: Int = 0,
+    val cacheCaseCount: Int = 0,
+    val usingCachedData: Boolean = false,
     val lastOverviewSummary: String? = null,
     val lastSuccessAt: String? = null,
     val lastError: String? = null,
@@ -139,4 +163,5 @@ data class MobileUiState(
     val toast: String? = null,
     val error: String? = null,
     val connection: MobileConnectionState = MobileConnectionState(),
+    val localDraft: MobileLocalDraft? = null,
 )

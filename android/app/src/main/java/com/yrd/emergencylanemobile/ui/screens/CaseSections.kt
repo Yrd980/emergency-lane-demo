@@ -33,6 +33,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.yrd.emergencylanemobile.model.MobileCaseDetail
 import com.yrd.emergencylanemobile.model.MobileCaseSummary
+import com.yrd.emergencylanemobile.model.MobileLocalDraft
 import com.yrd.emergencylanemobile.ui.components.InfoCard
 
 @Composable
@@ -64,8 +65,11 @@ fun CaseRow(item: MobileCaseSummary, selected: Boolean, onClick: () -> Unit) {
 @Composable
 fun CaseDetailSection(
     detail: MobileCaseDetail?,
+    localDraft: MobileLocalDraft?,
     busy: Boolean,
     onSave: (String, String, String, String) -> Unit,
+    onSaveLocalDraft: (String, String, String, String) -> Unit,
+    onClearLocalDraft: (String) -> Unit,
     onReport: (String) -> Unit,
 ) {
     if (detail == null) {
@@ -76,6 +80,9 @@ fun CaseDetailSection(
     var correctedPlate by remember(detail.id, detail.correctedPlateNumber) { mutableStateOf(detail.correctedPlateNumber.orEmpty()) }
     var operatorNote by remember(detail.id, detail.operatorNote) { mutableStateOf(detail.operatorNote) }
     var reviewStatus by remember(detail.id, detail.reviewStatus) { mutableStateOf(detail.reviewStatus) }
+    var localPlateCandidate by remember(detail.id, localDraft?.localPlateCandidate) { mutableStateOf(localDraft?.localPlateCandidate.orEmpty()) }
+    var localSceneNote by remember(detail.id, localDraft?.sceneNote) { mutableStateOf(localDraft?.sceneNote.orEmpty()) }
+    var localReviewStatus by remember(detail.id, localDraft?.reviewStatus) { mutableStateOf(localDraft?.reviewStatus ?: reviewStatus) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
@@ -146,6 +153,55 @@ fun CaseDetailSection(
                     }
                 }
                 Text(text = detail.reportContent ?: "暂无文书", color = Color(0xFFD7E3FF))
+            }
+        }
+
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "端侧增强链路（本机缓存）", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "为后续 CameraX / JNI / ncnn/YOLO / HyperLPR 输入预留的本机草稿位；当前仅保存到设备缓存，用于真机彩排和弱网补录。",
+                    color = Color(0xFFD7E3FF),
+                )
+                OutlinedTextField(
+                    value = localPlateCandidate,
+                    onValueChange = { localPlateCandidate = it },
+                    label = { Text("端侧候选车牌") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = localSceneNote,
+                    onValueChange = { localSceneNote = it },
+                    label = { Text("现场补充说明") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("待复核", "复核通过", "复核退回").forEach { option ->
+                        TextButton(onClick = { localReviewStatus = option }) {
+                            Text(
+                                text = option,
+                                color = if (localReviewStatus == option) Color(0xFF38BDF8) else Color(0xFFD7E3FF),
+                                fontWeight = if (localReviewStatus == option) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+                localDraft?.savedAt?.let { savedAt ->
+                    Text(text = "最近缓存：$savedAt · ${localDraft.inputMode}", color = Color(0xFF93C5FD))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onSaveLocalDraft(detail.id, localPlateCandidate, localSceneNote, localReviewStatus) }, enabled = !busy) {
+                        Text("保存端侧草稿")
+                    }
+                    TextButton(onClick = {
+                        localPlateCandidate = ""
+                        localSceneNote = ""
+                        localReviewStatus = reviewStatus
+                        onClearLocalDraft(detail.id)
+                    }) {
+                        Text("清空草稿")
+                    }
+                }
             }
         }
 

@@ -71,3 +71,6 @@ Android 端连接同一套后端接口，完成：
 3. 若现场网络变化，可在 App 顶部“连接诊断”卡里直接切换到新的局域网地址；
 4. 切换后先看“最近一次总览拉取结果”，确认 overview 拉通，再进入案件复核与举报演示；
 5. 若需要回到模拟器或构建默认地址，可直接在同一张卡片里恢复默认配置。
+
+6. 若要降低真机覆盖安装摩擦，优先使用 `android/scripts/install-debug.sh`（内部会先构建 APK，再尝试 `adb install -r -t`，必要时回退到 `adb push + pm install`，并在成功后自动拉起 App）；
+7. 当前本机 Android 构建建议使用 JDK 17，例如 `JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew --no-daemon assembleDebug`，可避免 JDK 21 下的 Dex/构建异常。
