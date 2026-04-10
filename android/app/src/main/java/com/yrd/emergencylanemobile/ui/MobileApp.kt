@@ -1,5 +1,6 @@
 package com.yrd.emergencylanemobile.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.emergencylaneguard.LocalDetectionActivity
 import com.yrd.emergencylanemobile.ui.components.InfoCard
 import com.yrd.emergencylanemobile.ui.screens.CaseDetailSection
 import com.yrd.emergencylanemobile.ui.screens.CaseRow
@@ -66,6 +69,19 @@ fun MobileApp() {
                             onApplyBaseUrl = { viewModel.applyDebugApiBaseUrl(it) },
                             onClearOverride = { viewModel.clearDebugApiBaseUrlOverride() },
                         )
+                    }
+                    item {
+                        InfoCard(
+                            title = "端侧本地检测模式",
+                            body = "已并入 newnew 的 CameraX + JNI/ncnn + Room 本地链路。这里保留云侧协同端，同时可跳转到端侧检测/待处理/本地案例模式用于毕设演示。",
+                        )
+                    }
+                    item {
+                        Button(onClick = {
+                            context.startActivity(Intent(context, LocalDetectionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }) {
+                            Text("进入端侧本地检测模式")
+                        }
                     }
                     item { HeaderSection(state = state) }
                     item { RunSummarySection(state.runs, state.overview?.latestRun) }

@@ -34,14 +34,23 @@
 - 举报状态同步展示
 - 连接诊断卡与运行期 API 地址切换
 - 分层结构：model / network / viewmodel / ui
+- 端侧本地检测模式入口
+- CameraX 相机检测
+- JNI + ncnn 本地检测链
+- Room 本地待处理记录与案例库
+- HyperLPR3 本地车牌识别
+- 本地视频裁剪与本地报告生成
 
 ## 4. 这次明确不做的内容
-- 不并轨 `newnew` 的 CameraX / JNI / HyperLPR / Room 主链
 - 不扩到账号系统 / 在线同步 / 真实平台接入
 - 不优先做 README 卡片化介绍或答辩文案型页面
+- 不要求本轮把 APK 安装到本地设备重新测试
+- 不把端侧本地链直接做成自动双向同步系统
 
 ## 5. 当前关键词
 - 双端协同
+- 双轨 Android
+- 端侧本地检测
 - multi-run
 - source selection
 - 视频抽样分析

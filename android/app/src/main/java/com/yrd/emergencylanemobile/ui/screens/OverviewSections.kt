@@ -36,7 +36,7 @@ fun HeaderSection(state: MobileUiState) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "参考 newnew 的待处理 / 相机 / 历史案例分区思路，但仍以当前 FastAPI 闭环为唯一数据源，负责真机查看、复核、举报状态同步。",
+                text = "当前 Android 已形成双轨：云侧继续消费 FastAPI 闭环做案件复核与举报同步；端侧新增本地检测模式，用于展示 CameraX / JNI / Room 能力。",
                 color = Color(0xFFD7E3FF),
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -108,8 +108,8 @@ fun FilterSection(selectedStatus: String?, onSelect: (String?) -> Unit) {
 @Composable
 fun SystemRoleSection(system: MobileSystem?) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        InfoCard(title = "Android 端定位", body = system?.androidRole ?: "移动协同查看 / 案件复核辅助 / 举报状态同步")
+        InfoCard(title = "Android 端定位", body = system?.androidRole ?: "云侧协同查看 / 端侧本地检测演示 / 案件复核辅助 / 举报状态同步")
         InfoCard(title = "Web 端定位", body = system?.webRole ?: "总览 / run 历史 / 事件案件筛选 / 证据链展示")
-        InfoCard(title = "边界说明", body = system?.referenceBasis ?: "仅参考 newnew，不并轨 CameraX/JNI 主链")
+        InfoCard(title = "边界说明", body = system?.referenceBasis ?: "Android 同时支持云侧协同与端侧 CameraX/JNI/Room 本地检测演示")
     }
 }

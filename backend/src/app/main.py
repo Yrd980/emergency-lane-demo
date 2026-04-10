@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta
+from uuid import uuid4
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -10,9 +9,22 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db
 from .config import settings
-from .schemas import AnalyzeDemoRequest, CaseUpdateRequest, ReportRequest
+from .schemas import AnalyzeDemoRequest, CaseUpdateRequest, DeviceCaseImportRequest, ReportRequest
 from .services.analyzer import VideoAnalysisService
 from .services.demo_assets import default_source_name, ensure_demo_assets, get_source_info, list_video_sources
+from .services.presenters import (
+    case_detail as present_case_detail,
+    case_summary as present_case_summary,
+    device_case_detail as present_device_case_detail,
+    device_case_summary as present_device_case_summary,
+    derive_case_update,
+    event_detail as present_event_detail,
+    event_summary as present_event_summary,
+    pipeline_payload,
+    run_summary,
+    source_payload,
+)
+from .time_utils import parse_timestamp
 
 settings.ensure_dirs()
 db.init_db()
@@ -32,247 +44,6 @@ app.mount("/media/clips", StaticFiles(directory=settings.clip_dir), name="clips"
 app.mount("/media/reports", StaticFiles(directory=settings.report_dir), name="reports")
 app.state.analysis_service = VideoAnalysisService()
 
-
-def _absolute_media_url(request: Request, relative_path: str) -> str:
-    return str(request.base_url).rstrip("/") + relative_path
-
-
-def _source_payload(request: Request, source: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "name": source["name"],
-        "title": source.get("title") or source["name"],
-        "video_url": _absolute_media_url(request, f"/media/data/{source['video_filename']}"),
-        "preview_url": _absolute_media_url(request, f"/media/data/{source['preview_filename']}") if source.get("preview_filename") else None,
-        "fps": source.get("fps", 0),
-        "frame_count": source.get("frame_count", 0),
-        "duration_seconds": source.get("duration_seconds", 0),
-        "sample_interval_seconds": source.get("sample_interval_seconds", settings.frame_interval_seconds),
-        "case_clip_seconds": source.get("case_clip_seconds", settings.case_clip_seconds),
-        "reference_mode": source.get("reference_mode", "网页大屏 + Android 移动端"),
-        "location": source.get("location", settings.location_label),
-        "lane_label": source.get("lane_label", "应急车道"),
-    }
-
-
-def _event_time_window(row) -> tuple[str, str]:
-    created_at = datetime.fromisoformat(row["created_at"])
-    first_seen = created_at + timedelta(seconds=float(row["start_second"]))
-    last_seen = created_at + timedelta(seconds=float(row["end_second"]))
-    return first_seen.isoformat(), last_seen.isoformat()
-
-
-def _event_summary(row) -> dict[str, Any]:
-    first_seen, last_seen = _event_time_window(row)
-    report_number = f"RP-{row['id'].split('-')[-1]}"
-    return {
-        "id": row["id"],
-        "run_id": row["run_id"],
-        "case_id": row["case_id"],
-        "plate_number": row["plate_number"],
-        "corrected_plate_number": row["corrected_plate_number"],
-        "review_status": row["review_status"] or db.CASE_REVIEW_PENDING,
-        "source_name": row["source_name"],
-        "status": row["status"],
-        "location": row["location"],
-        "lane_name": row["lane_label"],
-        "first_seen": first_seen,
-        "last_seen": last_seen,
-        "duration_seconds": round(row["duration_seconds"], 1),
-        "confidence": round(row["confidence"], 2),
-        "summary": row["summary"],
-        "report_number": report_number if row["status"] == db.CASE_STATUS_REPORTED else None,
-    }
-
-
-def _event_detail(row, evidence_rows, request: Request) -> dict[str, Any]:
-    evidence = []
-    timeline = []
-    for item in evidence_rows:
-        parsed = json.loads(item["raw_result"])
-        captured_at = datetime.fromisoformat(row["created_at"]) + timedelta(seconds=float(item["second"]))
-        evidence.append(
-            {
-                "label": item["note"],
-                "image_url": _absolute_media_url(request, f"/media/evidence/{item['image_path']}"),
-                "captured_at": captured_at.isoformat(),
-            }
-        )
-        timeline.append(
-            {
-                "timestamp_seconds": item["second"],
-                "plate_number": parsed.get("plate_number", row["plate_number"]),
-                "confidence": parsed.get("confidence", row["confidence"]),
-                "description": parsed.get("reason", row["summary"]),
-                "frame_path": item["image_path"],
-            }
-        )
-
-    summary = _event_summary(row)
-    return {
-        **summary,
-        "description": row["raw_reason"] or row["summary"],
-        "vehicle_count": 1,
-        "reported_at": row["report_submitted_at"],
-        "report_content": row["report_content"],
-        "evidence": evidence,
-        "raw_analysis": {
-            "source_mode": [app.state.analysis_service.mode],
-            "timeline": timeline,
-        },
-    }
-
-
-def _case_summary(row, request: Request) -> dict[str, Any]:
-    report_number = f"CASE-RP-{row['id'].split('-')[-1]}"
-    return {
-        "id": row["id"],
-        "run_id": row["run_id"],
-        "source_name": row["source_name"],
-        "plate_number": row["plate_number"],
-        "corrected_plate_number": row["corrected_plate_number"],
-        "review_status": row["review_status"],
-        "operator_note": row["operator_note"],
-        "status": row["status"],
-        "location": row["location"],
-        "confidence": round(row["confidence"], 2),
-        "summary": row["summary"],
-        "duration_seconds": round(row["duration_seconds"], 1),
-        "first_seen": row["first_seen"],
-        "last_seen": row["last_seen"],
-        "event_count": int(row["event_count"]),
-        "evidence_count": int(row["evidence_count"]),
-        "clip_url": _absolute_media_url(request, f"/media/clips/{row['clip_path']}") if row["clip_path"] else None,
-        "report_number": report_number if row["status"] == db.CASE_STATUS_REPORTED else None,
-    }
-
-
-def _case_detail(row, event_rows, evidence_rows, request: Request) -> dict[str, Any]:
-    evidence = []
-    timeline = []
-    for item in evidence_rows:
-        parsed = json.loads(item["raw_result"])
-        evidence.append(
-            {
-                "label": item["note"],
-                "image_url": _absolute_media_url(request, f"/media/evidence/{item['image_path']}"),
-                "captured_at": (datetime.fromisoformat(row["created_at"]) + timedelta(seconds=float(item["second"]))).isoformat(),
-            }
-        )
-        timeline.append(
-            {
-                "timestamp_seconds": item["second"],
-                "plate_number": parsed.get("plate_number", row["plate_number"]),
-                "confidence": parsed.get("confidence", row["confidence"]),
-                "description": parsed.get("reason", row["summary"]),
-                "frame_path": item["image_path"],
-            }
-        )
-
-    return {
-        **_case_summary(row, request),
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
-        "report_content": row["report_content"],
-        "report_file_url": _absolute_media_url(request, f"/media/reports/{row['report_path']}") if row["report_path"] else None,
-        "reported_at": row["report_submitted_at"],
-        "events": [_event_summary(event_row) for event_row in event_rows],
-        "evidence": evidence,
-        "raw_analysis": {
-            "timeline": timeline,
-            "source_mode": [app.state.analysis_service.mode],
-        },
-    }
-
-
-def _run_summary(row) -> dict[str, Any]:
-    return {
-        "id": row["id"],
-        "source_name": row["source_name"],
-        "source_video": row["source_video"],
-        "status": row["status"],
-        "mode": row["mode"],
-        "started_at": row["started_at"],
-        "finished_at": row["finished_at"],
-        "progress_percent": row["progress_percent"],
-        "message": row["message"],
-        "error_message": row["error_message"],
-        "events_created": int(row["events_created"] or 0),
-        "cases_created": int(row["cases_created"] or 0),
-        "event_count": int(row["event_count"] or 0),
-        "case_count": int(row["case_count"] or 0),
-    }
-
-
-def _pipeline_payload() -> list[dict[str, Any]]:
-    return [
-        {
-            "key": "sampling",
-            "title": "关键帧抽样",
-            "owner": "Backend",
-            "summary": "按时间间隔抽帧并保留每次 run 的独立取证输入。",
-            "evidence": ["关键帧 JPG", "抽样时间点", "source video"],
-        },
-        {
-            "key": "vision",
-            "title": "视觉识别",
-            "owner": "Backend + 智谱",
-            "summary": "识别应急车道占用与车牌信息，保留每帧原始识别原因和置信度。",
-            "evidence": ["车牌号", "违规原因", "置信度"],
-        },
-        {
-            "key": "fusion",
-            "title": "时序融合",
-            "owner": "Backend",
-            "summary": "把连续命中帧聚合为事件，再按车牌归档为案件，并等待人工复核。",
-            "evidence": ["事件时间窗", "案件聚合结果", "review status"],
-        },
-        {
-            "key": "evidence",
-            "title": "证据链生成",
-            "owner": "Backend",
-            "summary": "自动输出证据图、15 秒证据片段和正式举报文书，支撑答辩演示。",
-            "evidence": ["证据图", "15 秒片段", "TXT 文书"],
-        },
-    ]
-
-
-def _derive_case_update(existing_row, payload: CaseUpdateRequest) -> dict[str, Any]:
-    if existing_row["status"] == db.CASE_STATUS_REPORTED and (payload.review_status is not None or payload.status is not None):
-        raise HTTPException(status_code=409, detail="已举报案件不能再修改复核/状态流转")
-
-    fields: dict[str, Any] = {}
-    if payload.corrected_plate_number is not None:
-        fields["corrected_plate_number"] = payload.corrected_plate_number.strip() or None
-    if payload.operator_note is not None:
-        fields["operator_note"] = payload.operator_note.strip()
-
-    current_review_status = existing_row["review_status"]
-    current_status = existing_row["status"]
-    next_review_status = payload.review_status or current_review_status
-    next_status = payload.status or current_status
-
-    if payload.review_status is not None and payload.status is None:
-        if payload.review_status == db.CASE_REVIEW_APPROVED:
-            next_status = db.CASE_STATUS_READY_TO_REPORT
-        else:
-            next_status = db.CASE_STATUS_PENDING_REVIEW
-
-    if payload.status is not None and payload.review_status is None:
-        if payload.status == db.CASE_STATUS_READY_TO_REPORT:
-            next_review_status = db.CASE_REVIEW_APPROVED
-        elif payload.status == db.CASE_STATUS_PENDING_REVIEW and current_review_status == db.CASE_REVIEW_APPROVED:
-            next_review_status = db.CASE_REVIEW_PENDING
-
-    if next_status == db.CASE_STATUS_READY_TO_REPORT and next_review_status != db.CASE_REVIEW_APPROVED:
-        raise HTTPException(status_code=400, detail="只有复核通过的案件才能进入待举报")
-    if next_status == db.CASE_STATUS_PENDING_REVIEW and next_review_status == db.CASE_REVIEW_APPROVED:
-        raise HTTPException(status_code=400, detail="复核通过后状态不能仍为待复核")
-
-    fields["review_status"] = next_review_status
-    fields["status"] = next_status
-    return fields
-
-
 @app.get(f"{settings.api_prefix}/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -281,12 +52,12 @@ def health() -> dict[str, str]:
 @app.get(f"{settings.api_prefix}/sources")
 def sources(request: Request) -> list[dict[str, Any]]:
     ensure_demo_assets()
-    return [_source_payload(request, source) for source in list_video_sources()]
+    return [source_payload(request, source) for source in list_video_sources()]
 
 
 @app.get(f"{settings.api_prefix}/runs")
 def runs() -> list[dict[str, Any]]:
-    return [_run_summary(row) for row in db.list_runs()]
+    return [run_summary(row) for row in db.list_runs()]
 
 
 @app.get(f"{settings.api_prefix}/runs/{{run_id}}")
@@ -297,8 +68,8 @@ def run_detail(run_id: str) -> dict[str, Any]:
     events = db.list_events(run_id=run_id)
     cases = db.list_cases(run_id=run_id)
     return {
-        **_run_summary(row),
-        "events": [_event_summary(item) for item in events],
+        **run_summary(row),
+        "events": [present_event_summary(item) for item in events],
         "cases": [
             {
                 "id": item["id"],
@@ -320,12 +91,12 @@ def overview(request: Request) -> dict[str, Any]:
     latest_run = runs[0] if runs else None
     source_list = list_video_sources()
     active_source = latest_run["source_name"] if latest_run else default_source_name()
-    active_source_payload = _source_payload(request, get_source_info(active_source))
+    active_source_payload = source_payload(request, get_source_info(active_source))
     avg_confidence = round(sum(row["confidence"] for row in events) / len(events), 2) if events else 0.0
 
     trend_map: dict[str, int] = {}
     for row in events:
-        label = datetime.fromisoformat(row["created_at"]).strftime("%H:%M")
+        label = parse_timestamp(row["created_at"]).strftime("%H:%M")
         trend_map[label] = trend_map.get(label, 0) + 1
 
     return {
@@ -341,18 +112,22 @@ def overview(request: Request) -> dict[str, Any]:
             "reported_cases": sum(1 for row in cases if row["status"] == db.CASE_STATUS_REPORTED),
             "pending_review_cases": sum(1 for row in cases if row["status"] == db.CASE_STATUS_PENDING_REVIEW),
         },
-        "latest_run": _run_summary(latest_run) if latest_run else None,
-        "runs": [_run_summary(row) for row in runs[:5]],
+        "latest_run": run_summary(latest_run) if latest_run else None,
+        "runs": [run_summary(row) for row in runs[:5]],
         "trend": [{"label": label, "count": count} for label, count in sorted(trend_map.items())],
-        "recent_events": [_event_summary(row) for row in events[:5]],
-        "recent_cases": [_case_summary(row, request) for row in cases[:5]],
+        "recent_events": [present_event_summary(row) for row in events[:5]],
+        "recent_cases": [present_case_summary(row, request) for row in cases[:5]],
         "source": active_source_payload,
-        "sources": [_source_payload(request, item) for item in source_list],
-        "pipeline": _pipeline_payload(),
+        "sources": [source_payload(request, item) for item in source_list],
+        "pipeline": pipeline_payload(),
         "system": {
             "web_role": "总览 / run 历史 / 事件案件筛选 / 证据链展示",
-            "android_role": "移动协同查看 / 案件复核辅助 / 举报状态同步",
-            "reference_basis": "newnew 仅作思路参考，不并轨 CameraX/JNI 主链",
+            "android_role": "云侧协同查看 / 端侧本地检测演示 / 案件复核辅助 / 举报状态同步",
+            "reference_basis": "Android 已并入 newnew 端侧链路，用于 CameraX/JNI/Room 本地检测演示；FastAPI 主链继续承担案件归档、证据链与举报闭环。",
+        },
+        "device_sync": {
+            "device_case_count": len(db.list_device_cases()),
+            "sync_mode": "device-import-snapshot",
         },
     }
 
@@ -364,7 +139,7 @@ def events(
     run_id: str | None = Query(default=None),
     review_status: str | None = Query(default=None),
 ) -> list[dict[str, Any]]:
-    return [_event_summary(row) for row in db.list_events(status=status, plate=plate, run_id=run_id, review_status=review_status)]
+    return [present_event_summary(row) for row in db.list_events(status=status, plate=plate, run_id=run_id, review_status=review_status)]
 
 
 @app.get(f"{settings.api_prefix}/events/{{event_id}}")
@@ -373,7 +148,7 @@ def event_detail(request: Request, event_id: str) -> dict[str, Any]:
     if not row:
         raise HTTPException(status_code=404, detail="事件不存在")
     evidence_rows = db.get_evidence(event_id)
-    return _event_detail(row, evidence_rows, request)
+    return present_event_detail(row, evidence_rows, request, app.state.analysis_service.mode)
 
 
 @app.get(f"{settings.api_prefix}/cases")
@@ -384,7 +159,7 @@ def cases(
     run_id: str | None = Query(default=None),
     review_status: str | None = Query(default=None),
 ) -> list[dict[str, Any]]:
-    return [_case_summary(row, request) for row in db.list_cases(status=status, plate=plate, run_id=run_id, review_status=review_status)]
+    return [present_case_summary(row, request) for row in db.list_cases(status=status, plate=plate, run_id=run_id, review_status=review_status)]
 
 
 @app.get(f"{settings.api_prefix}/cases/{{case_id}}")
@@ -394,7 +169,7 @@ def case_detail(request: Request, case_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="案件不存在")
     event_rows = db.get_case_events(case_id)
     evidence_rows = db.get_case_evidence(case_id)
-    return _case_detail(row, event_rows, evidence_rows, request)
+    return present_case_detail(row, event_rows, evidence_rows, request, app.state.analysis_service.mode)
 
 
 @app.patch(f"{settings.api_prefix}/cases/{{case_id}}")
@@ -402,7 +177,7 @@ def patch_case(request: Request, case_id: str, payload: CaseUpdateRequest) -> di
     row = db.get_case(case_id)
     if not row:
         raise HTTPException(status_code=404, detail="案件不存在")
-    fields = _derive_case_update(row, payload)
+    fields = derive_case_update(row, payload)
     db.update_case(case_id, **fields)
     if "status" in fields:
         with db.get_conn() as conn:
@@ -410,7 +185,7 @@ def patch_case(request: Request, case_id: str, payload: CaseUpdateRequest) -> di
     updated = db.get_case(case_id)
     event_rows = db.get_case_events(case_id)
     evidence_rows = db.get_case_evidence(case_id)
-    return _case_detail(updated, event_rows, evidence_rows, request)
+    return present_case_detail(updated, event_rows, evidence_rows, request, app.state.analysis_service.mode)
 
 
 @app.post(f"{settings.api_prefix}/events/{{event_id}}/report")
@@ -486,6 +261,80 @@ def analyze_demo(request: Request, payload: AnalyzeDemoRequest | None = None) ->
         result = app.state.analysis_service.run_demo_analysis_sync(source_name=source_name)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    result["source"] = _source_payload(request, get_source_info(source_name))
-    result["run"] = _run_summary(db.get_run(result["run_id"]))
+    result["source"] = source_payload(request, get_source_info(source_name))
+    result["run"] = run_summary(db.get_run(result["run_id"]))
     return result
+
+
+@app.post(f"{settings.api_prefix}/device/cases/import")
+def import_device_cases(payload: DeviceCaseImportRequest) -> dict[str, Any]:
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="至少导入一个端侧案件")
+
+    imported_case_ids: list[str] = []
+    imported_evidence_count = 0
+    for item in payload.items:
+        now = item.updated_at or item.created_at or db.utc_now()
+        case_id = f"device-case-{uuid4().hex[:12]}"
+        case_payload = {
+            "id": case_id,
+            "client_case_id": item.client_case_id,
+            "device_label": payload.device_label,
+            "source_mode": "local-device",
+            "plate_number": item.plate_number,
+            "corrected_plate_number": item.corrected_plate_number,
+            "review_status": item.review_status,
+            "status": item.status,
+            "operator_note": item.operator_note,
+            "summary": item.summary or f"端侧本地检测导入案件 {item.plate_number}",
+            "location": item.location,
+            "clip_uri": item.clip_uri,
+            "report_text": item.report_text,
+            "created_at": item.created_at or now,
+            "updated_at": item.updated_at or now,
+            "last_synced_at": db.utc_now(),
+        }
+        db.upsert_device_case(case_payload)
+        imported_case_ids.append(case_payload["id"])
+        for evidence in item.evidence:
+            db.insert_device_evidence(
+                case_payload["id"],
+                {
+                    "id": f"device-evidence-{uuid4().hex[:12]}",
+                    "label": evidence.label,
+                    "image_uri": evidence.image_uri,
+                    "captured_at": evidence.captured_at,
+                    "note": evidence.note,
+                },
+            )
+            imported_evidence_count += 1
+
+    return {
+        "device_label": payload.device_label,
+        "imported_cases": len(imported_case_ids),
+        "imported_evidence": imported_evidence_count,
+        "case_ids": imported_case_ids,
+        "message": "端侧案件导入成功",
+    }
+
+
+@app.get(f"{settings.api_prefix}/device/sync-snapshot")
+def device_sync_snapshot() -> dict[str, Any]:
+    rows = db.list_device_cases()
+    return {
+        "summary": {
+            "device_case_count": len(rows),
+            "device_evidence_count": sum(int(row["evidence_count"] or 0) for row in rows),
+            "device_labels": sorted({row["device_label"] for row in rows}),
+        },
+        "cases": [present_device_case_summary(row) for row in rows],
+    }
+
+
+@app.get(f"{settings.api_prefix}/device/cases/{{case_id}}")
+def device_case_detail(case_id: str) -> dict[str, Any]:
+    row = db.get_device_case(case_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="端侧案件不存在")
+    evidence_rows = db.get_device_evidence(case_id)
+    return present_device_case_detail(row, evidence_rows)

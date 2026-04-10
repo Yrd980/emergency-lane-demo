@@ -131,6 +131,93 @@ class ApiSmokeTest(unittest.TestCase):
         self.assertEqual(report.status_code, 409)
         self.assertIn("复核通过", report.text)
 
+    def test_patch_case_rejects_inconsistent_review_and_status(self) -> None:
+        analyze = self.client.post("/api/tasks/analyze-demo", json={"source_name": "demo_highway.mp4"})
+        self.assertEqual(analyze.status_code, 200)
+        case_id = self.client.get("/api/cases").json()[0]["id"]
+
+        response = self.client.patch(
+            f"/api/cases/{case_id}",
+            json={"status": "待复核", "review_status": "复核通过"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("复核通过后状态不能仍为待复核", response.text)
+
+    def test_analyze_demo_rejects_unknown_source(self) -> None:
+        response = self.client.post("/api/tasks/analyze-demo", json={"source_name": "missing.mp4"})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("未找到视频源", response.text)
+
+    def test_report_event_rejects_case_before_review_approval(self) -> None:
+        analyze = self.client.post("/api/tasks/analyze-demo", json={"source_name": "demo_highway.mp4"})
+        self.assertEqual(analyze.status_code, 200)
+        event_id = self.client.get("/api/events").json()[0]["id"]
+
+        response = self.client.post(f"/api/events/{event_id}/report")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("尚未复核通过", response.text)
+
+    def test_device_case_import_and_snapshot(self) -> None:
+        response = self.client.post(
+            "/api/device/cases/import",
+            json={
+                "device_label": "pixel-local-mode",
+                "items": [
+                    {
+                        "client_case_id": "local-case-001",
+                        "plate_number": "沪A12345",
+                        "corrected_plate_number": "沪A12345",
+                        "review_status": "复核通过",
+                        "status": "待举报",
+                        "operator_note": "端侧相机抓拍导入",
+                        "summary": "本地 CameraX + JNI 检测到疑似占用应急车道",
+                        "location": "G2 京沪高速",
+                        "clip_uri": "content://clips/local-case-001",
+                        "report_text": "本地生成报告摘要",
+                        "created_at": "2026-04-10T10:00:00+00:00",
+                        "updated_at": "2026-04-10T10:05:00+00:00",
+                        "evidence": [
+                            {
+                                "label": "抓拍 1",
+                                "image_uri": "content://images/local-case-001-1",
+                                "captured_at": "2026-04-10T10:00:10+00:00",
+                                "note": "车牌已识别",
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["imported_cases"], 1)
+        self.assertEqual(payload["imported_evidence"], 1)
+
+        snapshot = self.client.get("/api/device/sync-snapshot")
+        self.assertEqual(snapshot.status_code, 200)
+        snapshot_payload = snapshot.json()
+        self.assertEqual(snapshot_payload["summary"]["device_case_count"], 1)
+        self.assertEqual(snapshot_payload["summary"]["device_evidence_count"], 1)
+        self.assertEqual(snapshot_payload["summary"]["device_labels"], ["pixel-local-mode"])
+        case_id = snapshot_payload["cases"][0]["id"]
+        self.assertEqual(snapshot_payload["cases"][0]["source_mode"], "local-device")
+
+        detail = self.client.get(f"/api/device/cases/{case_id}")
+        self.assertEqual(detail.status_code, 200)
+        detail_payload = detail.json()
+        self.assertEqual(detail_payload["device_label"], "pixel-local-mode")
+        self.assertEqual(len(detail_payload["evidence"]), 1)
+
+    def test_device_case_import_rejects_empty_items(self) -> None:
+        response = self.client.post("/api/device/cases/import", json={"device_label": "empty", "items": []})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("至少导入一个端侧案件", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

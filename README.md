@@ -4,7 +4,7 @@
 
 - `backend/`：`uv + FastAPI`，负责视频分析、事件生成、案件归档、证据链与任务历史。
 - `frontend/`：Vite + TypeScript，负责 run 总览、事件/案件筛选、证据链展示、案件人工复核编辑。
-- `android/`：Kotlin + Compose，负责移动端 run 摘要、案件筛选、案件复核信息查看与更新。
+- `android/`：Kotlin + Compose + CameraX + JNI/ncnn + Room，既负责移动端云侧协同，也提供端侧本地检测演示模式。
 - `data/`：演示视频、封面图与 manifest。
 - `storage/`：运行时生成的关键帧、证据图、证据片段、报告文本与 SQLite 数据库。
 
@@ -20,17 +20,21 @@
 6. 按车牌归档为案件；
 7. 生成证据图、15 秒证据片段与正式举报文书；
 8. Web 与 Android 共享同一套 run / event / case 数据；
-9. 支持人工复核案件并联动举报状态流转。
+9. Android 内可切换到端侧本地检测模式，展示 CameraX / JNI / Room 本地链路；
+10. 支持人工复核案件并联动举报状态流转。
 
 ## 毕设交付定位
 
 当前仓库建议作为毕设主系统：
 
 - **主线**：`backend + frontend + android` 的双端协同闭环；
-- **参考来源**：`newnew` 作为 Android 原型 / 算法思路来源，用于说明项目演进；
-- **当前重点**：补齐可操作功能，不优先做 README 卡片化介绍或 CameraX/JNI 并轨。
+- **端侧补充**：已把 `newnew` 中可运行的 CameraX / JNI / Room 本地链路并入 Android，用于答辩时证明端侧能力存在；
+- **当前重点**：用“云侧主链 + 端侧演示链”双轨叙事支撑毕设检查。
 
-因此本阶段**不要求**把 `newnew` 的 CameraX / JNI / HyperLPR / Room 本地链路 1:1 并入主系统，而是保留其作为设计演进参考。
+因此当前阶段的实际落地是：
+- **云侧主链**：FastAPI 负责视频分析、事件/案件归档、证据链与举报文书；
+- **端侧演示链**：Android 内保留本地检测、抓拍、Room 案例库、视频裁剪与本地报告；
+- 两条线互补，不互相替代。
 
 ## 这次补齐后的重点功能
 
@@ -77,9 +81,10 @@
 - **Android 真机联调底座已完成**：支持通过 `emergencyLaneApiBaseUrl`、`emergencyLaneDebugLanBaseUrl` 和 App 内 debug 诊断卡切换 API 地址；
 - **Android 结构已完成第一轮拆分**：`MainActivity` 仅保留入口，状态、API、模型、UI 组件拆分到独立目录；
 - **Android 已增量并入端侧缓存层**：最近一次成功同步的 `overview / runs / cases / selected case` 与端侧草稿会缓存在手机本地，弱网彩排时仍可继续展示主链；
+- **Android 已并入 newnew 端侧本地检测链**：`com.example.emergencylaneguard.*` 下保留 CameraX / JNI+ncnn / Room 本地案例流，并通过 App 内按钮跳转到端侧检测模式；
 - **Android 真机覆盖安装脚本已补齐**：可通过 `android/scripts/install-debug.sh` 指定 `ANDROID_SERIAL` 完成单设备安装、失败后按需 `--clean` 重装并自动拉起 App；
 - **Web 大屏已完成第一轮重构**：当前是深色驾驶舱式总览，保留 source 选择、run 历史、案件筛选、证据链与举报闭环；
-- **参考基线**：`origin/newnew` 与 `.omx/drafts/origin-proposal-images-20260408/` 仅作为设计参考，不直接并入 CameraX / JNI / Room 主链。
+- **后端已新增 device 兼容接口**：支持导入端侧案件快照并输出 `/api/device/sync-snapshot`，用于说明本地链路与云侧后端的兼容路径。
 
 ### Android 当前源码分层
 
@@ -89,6 +94,7 @@
 - `android/app/src/main/java/com/yrd/emergencylanemobile/ui/`：Compose 页面与组件
 - `android/app/src/main/java/com/yrd/emergencylanemobile/ApiBaseUrlStore.kt`：运行期 API 地址覆盖存储
 - `android/app/src/main/java/com/yrd/emergencylanemobile/DeviceAssistStore.kt`：真机缓存快照与端侧草稿存储
+- `android/app/src/main/java/com/example/emergencylaneguard/`：从 `newnew` 合并后的端侧本地检测链路（CameraX / JNI+ncnn / Room）
 
 ## 启动后端
 
@@ -152,6 +158,8 @@ cd android
 - 可选 `emergencyLaneDebugLanBaseUrl` 作为 debug 局域网默认值，用于真机联调构建；
 - App 内置 debug 连接诊断卡，可查看当前 API 地址、最近一次 overview 拉取结果，并临时切换到局域网地址而无需改源码；
 - App 会把最近一次成功同步的总览 / run / 案件 / 当前案件详情缓存到真机本地，并提供“端侧草稿”区作为后续 CameraX / JNI / HyperLPR 增强链的最小接入位；
+- App 首页新增“进入端侧本地检测模式”按钮，可跳转到 CameraX / JNI+ncnn / Room 演示链；
+- 若要编译端侧本地检测模式，需要本机具备 Android SDK、NDK 与 CMake 3.22.1，并允许 Gradle 拉取 HyperLPR3 依赖；
 - 真机联调建议后端使用 `uv run uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload` 启动，并确保手机与开发机在同一网段；
 - 本地构建时可创建 `android/local.properties` 指向 SDK，例如 `sdk.dir=/home/yrd/Android/Sdk`，也可在其中加入 `emergencyLaneApiBaseUrl=http://<你的局域网IP>:8000/api/`。
 
@@ -159,9 +167,10 @@ cd android
 
 ```bash
 cd android
-ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
+ANDROID_SERIAL=<adb-device-id> ./scripts/install-debug.sh
 ```
 
+- `ANDROID_SERIAL` / `ADB_SERIAL`、局域网 IP、无线调试地址都会随当前 Wi‑Fi / adb 会话变化，不要把某次现场值当成长期固定配置；
 - 若厂商 ROM 拒绝覆盖安装，可在设备确认安装授权后改用 `./scripts/install-debug.sh --clean`；
 - 默认安装路径不会在失败时自动卸载旧包，只有显式传入 `--clean` 才会执行“卸载后重装”；
 - 脚本会优先使用 `ANDROID_SERIAL`，未指定时自动挑选一个在线设备，并在安装成功后拉起 App；
@@ -192,6 +201,11 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
 ### tasks
 - `POST /api/tasks/analyze-demo`
 
+### device compatibility
+- `POST /api/device/cases/import`
+- `GET /api/device/sync-snapshot`
+- `GET /api/device/cases/{id}`
+
 ## 验证
 
 ### 后端
@@ -212,6 +226,11 @@ cd android
 ./gradlew --no-daemon assembleDebug
 ```
 
+说明：
+- 本轮验收以 **编译通过** 为主，不要求把 APK 安装到本地设备；
+- 端侧本地检测模式是否存在，以源码、资源、JNI 构建链和 `assembleDebug` 通过作为当前阶段证据；
+- 若后续需要真机彩排，再使用 `android/scripts/install-debug.sh` 进行安装验证。
+
 ### Android（真机局域网联调构建）
 ```bash
 cd android
@@ -228,7 +247,8 @@ ANDROID_SERIAL=<adb-device-id> android/scripts/install-debug.sh
 - 安装脚本会先执行 `assembleDebug`，再尝试 `adb install -r -t`，必要时回退到 `adb push + pm install`；
 - 当前 Android 16 / 厂商 ROM 环境下，`./gradlew installDebug` 仍可能因 ddmlib 追加 `--no-streaming` 而失败，因此优先使用该脚本；
 - 若设备弹出安装/更新确认框，需先在手机端授权一次；否则会出现 `INSTALL_FAILED_ABORTED: User rejected permissions`；
-- 不传 `ANDROID_SERIAL` / `ADB_SERIAL` 时，会自动选择第一台已授权 adb 设备。
+- 不传 `ANDROID_SERIAL` / `ADB_SERIAL` 时，会自动选择第一台已授权 adb 设备；
+- 文档中的 `http://<你的局域网IP>:8000/api/`、`<adb-device-id>` 都是占位符，使用时请替换成你当前网络/无线调试会话里的实时值。
 
 ## 文档
 

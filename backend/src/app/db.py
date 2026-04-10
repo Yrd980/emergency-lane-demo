@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
 from typing import Any, Iterator
 
 from .config import settings
+from .time_utils import utc_now
 
 CASE_STATUS_PENDING_REVIEW = "待复核"
 CASE_STATUS_READY_TO_REPORT = "待举报"
@@ -14,11 +14,6 @@ CASE_STATUS_REPORTED = "已举报"
 CASE_REVIEW_PENDING = "待复核"
 CASE_REVIEW_APPROVED = "复核通过"
 CASE_REVIEW_REJECTED = "复核退回"
-
-
-def utc_now() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds")
-
 
 def _connect() -> sqlite3.Connection:
     settings.ensure_dirs()
@@ -123,6 +118,35 @@ def init_db() -> None:
                 raw_result TEXT NOT NULL,
                 FOREIGN KEY(event_id) REFERENCES events(id)
             );
+
+            CREATE TABLE IF NOT EXISTS device_cases (
+                id TEXT PRIMARY KEY,
+                client_case_id TEXT NOT NULL,
+                device_label TEXT NOT NULL,
+                source_mode TEXT NOT NULL DEFAULT 'local-device',
+                plate_number TEXT NOT NULL,
+                corrected_plate_number TEXT,
+                review_status TEXT NOT NULL DEFAULT '待复核',
+                status TEXT NOT NULL DEFAULT '待复核',
+                operator_note TEXT NOT NULL DEFAULT '',
+                summary TEXT NOT NULL,
+                location TEXT NOT NULL DEFAULT '',
+                clip_uri TEXT,
+                report_text TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_synced_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS device_evidence (
+                id TEXT PRIMARY KEY,
+                device_case_id TEXT NOT NULL,
+                label TEXT NOT NULL,
+                image_uri TEXT NOT NULL,
+                captured_at TEXT,
+                note TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY(device_case_id) REFERENCES device_cases(id)
+            );
             """
         )
 
@@ -147,6 +171,38 @@ def init_db() -> None:
         )
         _ensure_columns(conn, "events", {"case_id": "TEXT"})
         _ensure_columns(conn, "evidence", {"case_id": "TEXT"})
+        _ensure_columns(
+            conn,
+            "device_cases",
+            {
+                "client_case_id": "TEXT NOT NULL DEFAULT ''",
+                "device_label": "TEXT NOT NULL DEFAULT 'android-local-mode'",
+                "source_mode": "TEXT NOT NULL DEFAULT 'local-device'",
+                "plate_number": "TEXT NOT NULL DEFAULT ''",
+                "corrected_plate_number": "TEXT",
+                "review_status": f"TEXT NOT NULL DEFAULT '{CASE_REVIEW_PENDING}'",
+                "status": f"TEXT NOT NULL DEFAULT '{CASE_STATUS_PENDING_REVIEW}'",
+                "operator_note": "TEXT NOT NULL DEFAULT ''",
+                "summary": "TEXT NOT NULL DEFAULT ''",
+                "location": "TEXT NOT NULL DEFAULT ''",
+                "clip_uri": "TEXT",
+                "report_text": "TEXT",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+                "last_synced_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+        _ensure_columns(
+            conn,
+            "device_evidence",
+            {
+                "device_case_id": "TEXT NOT NULL DEFAULT ''",
+                "label": "TEXT NOT NULL DEFAULT ''",
+                "image_uri": "TEXT NOT NULL DEFAULT ''",
+                "captured_at": "TEXT",
+                "note": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
 
 
 def _ensure_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str]) -> None:
@@ -163,6 +219,8 @@ def reset_demo_data() -> None:
         conn.execute("DELETE FROM events")
         conn.execute("DELETE FROM cases")
         conn.execute("DELETE FROM analysis_runs")
+        conn.execute("DELETE FROM device_evidence")
+        conn.execute("DELETE FROM device_cases")
 
 
 def create_run(run_id: str, source_name: str, source_video: str, mode: str) -> None:
@@ -577,3 +635,142 @@ def latest_run() -> sqlite3.Row | None:
             "SELECT * FROM analysis_runs ORDER BY started_at DESC, id DESC LIMIT 1"
         ).fetchone()
     return row
+
+
+def upsert_device_case(case: dict[str, Any]) -> None:
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM device_cases WHERE client_case_id = ? AND device_label = ?",
+            (case["client_case_id"], case["device_label"]),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """
+                UPDATE device_cases
+                SET source_mode = ?,
+                    plate_number = ?,
+                    corrected_plate_number = ?,
+                    review_status = ?,
+                    status = ?,
+                    operator_note = ?,
+                    summary = ?,
+                    location = ?,
+                    clip_uri = ?,
+                    report_text = ?,
+                    created_at = ?,
+                    updated_at = ?,
+                    last_synced_at = ?
+                WHERE id = ?
+                """,
+                (
+                    case["source_mode"],
+                    case["plate_number"],
+                    case.get("corrected_plate_number"),
+                    case["review_status"],
+                    case["status"],
+                    case["operator_note"],
+                    case["summary"],
+                    case["location"],
+                    case.get("clip_uri"),
+                    case.get("report_text"),
+                    case["created_at"],
+                    case["updated_at"],
+                    case["last_synced_at"],
+                    existing["id"],
+                ),
+            )
+            case["id"] = existing["id"]
+            conn.execute("DELETE FROM device_evidence WHERE device_case_id = ?", (existing["id"],))
+        else:
+            conn.execute(
+                """
+                INSERT INTO device_cases (
+                    id, client_case_id, device_label, source_mode, plate_number, corrected_plate_number,
+                    review_status, status, operator_note, summary, location, clip_uri,
+                    report_text, created_at, updated_at, last_synced_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    case["id"],
+                    case["client_case_id"],
+                    case["device_label"],
+                    case["source_mode"],
+                    case["plate_number"],
+                    case.get("corrected_plate_number"),
+                    case["review_status"],
+                    case["status"],
+                    case["operator_note"],
+                    case["summary"],
+                    case["location"],
+                    case.get("clip_uri"),
+                    case.get("report_text"),
+                    case["created_at"],
+                    case["updated_at"],
+                    case["last_synced_at"],
+                ),
+            )
+
+
+def insert_device_evidence(device_case_id: str, evidence: dict[str, Any]) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO device_evidence (id, device_case_id, label, image_uri, captured_at, note)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                evidence["id"],
+                device_case_id,
+                evidence["label"],
+                evidence["image_uri"],
+                evidence.get("captured_at"),
+                evidence.get("note", ""),
+            ),
+        )
+
+
+def list_device_cases() -> list[sqlite3.Row]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                dc.*,
+                COUNT(de.id) AS evidence_count
+            FROM device_cases dc
+            LEFT JOIN device_evidence de ON de.device_case_id = dc.id
+            GROUP BY dc.id
+            ORDER BY dc.updated_at DESC, dc.id DESC
+            """
+        ).fetchall()
+    return rows
+
+
+def get_device_case(case_id: str) -> sqlite3.Row | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                dc.*,
+                COUNT(de.id) AS evidence_count
+            FROM device_cases dc
+            LEFT JOIN device_evidence de ON de.device_case_id = dc.id
+            WHERE dc.id = ?
+            GROUP BY dc.id
+            """,
+            (case_id,),
+        ).fetchone()
+    return row
+
+
+def get_device_evidence(case_id: str) -> list[sqlite3.Row]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM device_evidence
+            WHERE device_case_id = ?
+            ORDER BY captured_at ASC, id ASC
+            """,
+            (case_id,),
+        ).fetchall()
+    return rows

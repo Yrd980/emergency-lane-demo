@@ -8,19 +8,33 @@
 2. 让真机在弱网环境下也能继续承担“移动协同查看 / 复核辅助端”角色。
 
 当前仍坚持 **FastAPI 是案件、证据链、举报状态的最终事实源**。  
-Android 新增的本地能力只承担：
+但 Android 现在已经形成两条并存的能力线：
+
+- **云侧协同线**：继续消费 FastAPI 的 `overview / runs / cases / reports`；
+- **端侧本地线**：已并入 `newnew` 的 CameraX / JNI+ncnn / Room / 本地案例流，用于毕设检查时证明端侧检测能力存在。
+
+因此 Android 新增的本地能力现在包括：
 
 - **本地缓存层**：缓存最近一次成功同步的 `overview / runs / cases / selected case`；
-- **端侧草稿位**：缓存候选车牌、现场补充说明与本地复核状态，作为后续 CameraX / JNI / ncnn/YOLO / HyperLPR 接入前的增强链占位。
+- **端侧草稿位**：缓存候选车牌、现场补充说明与本地复核状态；
+- **端侧检测模式**：本地相机检测、抓拍、Room 记录、案例归档、本地裁剪与本地报告生成。
 
 ## 真机安装
+
+> 说明：本轮仓库收口时，**没有要求把 APK 下载/安装到本地设备重新测试**。  
+> 当前文档保留真机安装路径，是为了后续答辩彩排时可直接使用；本轮实际验收以 `assembleDebug` 编译通过为准。
 
 ### 推荐命令
 
 ```bash
 cd android
-ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
+ANDROID_SERIAL=<adb-device-id> ./scripts/install-debug.sh
 ```
+
+其中：
+
+- `<adb-device-id>` 表示当前 adb 会话里真实在线的设备标识；
+- 局域网 IP、无线调试地址、配对端口、配对码都会随 Wi‑Fi / 无线调试会话变化，不应把某次现场值写死成长期文档配置。
 
 ### 脚本行为
 
@@ -35,7 +49,7 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
 
 ```bash
 cd android
-ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
+ANDROID_SERIAL=<adb-device-id> ./scripts/install-debug.sh --clean
 ```
 
 `--clean` 会在安装失败后先卸载旧调试包，再重新安装。默认安装路径不会在失败时自动卸载旧包；只有显式传入 `--clean` 才会执行 remove-and-reinstall。
@@ -76,6 +90,8 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
 - 当前状态筛选条件
 - 端侧草稿 `localDraft`
 
+它服务的是 **云侧协同线**，不是替代本地 Room 数据库。
+
 ### 使用方式
 
 - 在线刷新成功时，自动覆盖本地快照
@@ -99,7 +115,40 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
 - 弱网时先落本地草稿
 - 网络恢复后，再通过正常 case review 接口提交到 FastAPI
 
-当前这是 **增强链占位**，不是新的事实源。
+当前这是 **云侧协同增强位**，不是新的事实源。
+
+## 端侧本地检测模式
+
+当前 Android 首页已新增“进入端侧本地检测模式”按钮。跳转后进入从 `newnew` 合并而来的本地链路，包含：
+
+- `PendingFragment`：待处理抓拍记录
+- `HomeFragment`：CameraX + JNI/ncnn 相机检测页
+- `CasesFragment`：本地历史案例库
+- `Room`：`ViolationRecord` / `CaseInfo`
+- `HyperLPR3`：本地车牌识别
+- `VideoTrimmer`：本地 15 秒片段裁剪
+
+这条链路当前的定位不是替代后端，而是：
+
+1. 证明项目具备端侧本地检测能力；
+2. 在毕设检查时展示“云侧闭环 + 端侧能力”双轨叙事；
+3. 为后续需要时，再通过后端 device 接口做导入/同步兼容。
+
+## 后端 device 兼容接口
+
+为兼容端侧本地链路，后端已新增：
+
+- `POST /api/device/cases/import`
+- `GET /api/device/sync-snapshot`
+- `GET /api/device/cases/{id}`
+
+当前用途是：
+
+- 接收端侧本地案件快照/证据元数据；
+- 输出端侧案件同步视图；
+- 在答辩时说明本地链路与云侧后端存在兼容路径。
+
+这不是自动双向同步系统，而是当前阶段最小可解释、最小可演示的兼容层。
 
 ## 推荐彩排顺序
 
@@ -116,7 +165,7 @@ ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh --clean
 3. 安装并启动 Android 真机
    ```bash
    cd android
-   ANDROID_SERIAL=192.168.120.13:39929 ./scripts/install-debug.sh
+   ANDROID_SERIAL=<adb-device-id> ./scripts/install-debug.sh
    ```
 4. Android 端确认连接诊断卡显示局域网 API 正常
 5. Web 发起一次 demo analysis

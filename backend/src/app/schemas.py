@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ReportRequest(BaseModel):
@@ -36,3 +36,31 @@ class RunStatusResponse(BaseModel):
     cases_created: int = 0
     event_count: int = 0
     case_count: int = 0
+
+
+class DeviceEvidenceImport(BaseModel):
+    label: str
+    image_uri: str
+    captured_at: str | None = None
+    note: str = ""
+
+
+class DeviceCaseImport(BaseModel):
+    client_case_id: str = Field(min_length=1)
+    plate_number: str = Field(min_length=1)
+    corrected_plate_number: str | None = None
+    review_status: Literal["待复核", "复核通过", "复核退回"] = "待复核"
+    status: Literal["待复核", "待举报", "已举报"] = "待复核"
+    operator_note: str = ""
+    summary: str = ""
+    location: str = ""
+    clip_uri: str | None = None
+    report_text: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    evidence: list[DeviceEvidenceImport] = []
+
+
+class DeviceCaseImportRequest(BaseModel):
+    device_label: str = "android-local-mode"
+    items: list[DeviceCaseImport]
