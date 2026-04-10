@@ -36,7 +36,7 @@
 - 分层结构：model / network / viewmodel / ui
 - 端侧本地检测模式入口
 - CameraX 相机检测
-- JNI + ncnn 本地检测链
+- JNI + YOLOv8+ncnn 本地检测链
 - Room 本地待处理记录与案例库
 - HyperLPR3 本地车牌识别
 - 本地视频裁剪与本地报告生成

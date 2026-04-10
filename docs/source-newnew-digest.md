@@ -44,19 +44,19 @@
 - `clips`：每个案件对应的 15 秒证据片段
 - `reports`：正式举报文书文本
 - Web 端 + Android 云侧协同模式：共同消费同一后端接口
-- Android 端额外保留 `newnew` 迁入后的端侧本地检测模式，用于展示 CameraX / JNI / Room 能力
+- Android 端额外保留一条端侧本地检测模式，用于展示 CameraX、JNI、YOLOv8+ncnn、HyperLPR3 与 Room 能力
 
 ## 3. 当前已经并入的部分
 
 本轮已从 `newnew` 并入主仓 Android 的能力包括：
 
 - CameraX 实时检测页面
-- JNI + ncnn 原生检测链
+- JNI + YOLOv8+ncnn 原生检测链
 - HyperLPR3 本地车牌识别
 - Room 本地待处理记录 / 案例库
 - 本地视频裁剪与本地报告生成
 
-这些能力当前定位为 **端侧演示链**：
+这些能力当前定位为 **Android 端内部的端侧本地检测链**：
 - 用于毕设检查时证明“项目具备端侧本地检测能力”；
 - 不替代后端主线的事件归档、证据链与举报闭环；
 - 与现有 Compose + FastAPI 协同端并存。

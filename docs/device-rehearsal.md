@@ -11,7 +11,7 @@
 但 Android 现在已经形成两条并存的能力线：
 
 - **云侧协同线**：继续消费 FastAPI 的 `overview / runs / cases / reports`；
-- **端侧本地线**：已并入 `newnew` 的 CameraX / JNI+ncnn / Room / 本地案例流，用于毕设检查时证明端侧检测能力存在。
+- **端侧本地线**：Android 项目内保留一条端侧本地检测链，包含 CameraX、JNI、YOLOv8+ncnn、HyperLPR3、Room 与本地案例流。
 
 因此 Android 新增的本地能力现在包括：
 
