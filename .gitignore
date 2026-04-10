@@ -9,6 +9,7 @@ backend/storage/
 
 frontend/node_modules/
 frontend/dist/
+.playwright-mcp/
 
 storage/
 __pycache__/

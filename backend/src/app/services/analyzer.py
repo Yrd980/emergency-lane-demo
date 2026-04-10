@@ -4,7 +4,7 @@ import shutil
 import threading
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +13,7 @@ import numpy as np
 
 from .. import db
 from ..config import settings
+from ..time_utils import parse_timestamp, utc_now_compact
 from .demo_assets import default_source_name, ensure_demo_assets, get_source_info
 from .zhipu_client import ZhipuVisionService
 
@@ -38,7 +39,7 @@ class VideoAnalysisService:
     def run_demo_analysis_sync(self, source_name: str | None = None) -> dict[str, Any]:
         ensure_demo_assets()
         selected_source = get_source_info(source_name or default_source_name())
-        run_id = f"RUN-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
+        run_id = f"RUN-{utc_now_compact()}-{uuid.uuid4().hex[:4].upper()}"
         started_at = db.utc_now()
 
         with self.lock:
@@ -406,7 +407,7 @@ class VideoAnalysisService:
         return evidence_items
 
     def _second_to_time_iso(self, second: float) -> str:
-        base = datetime.fromisoformat(db.utc_now())
+        base = parse_timestamp(db.utc_now())
         return (base + timedelta(seconds=second)).isoformat()
 
 
