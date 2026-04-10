@@ -14,7 +14,7 @@
 
 1. 触发演示视频分析；
 2. 后端按时间间隔抽取关键帧；
-3. 后端调用智谱视觉模型判断是否占用应急车道，并读取车牌；
+3. 后端统一调用视觉识别服务判断是否疑似占用应急车道，并尽量读取车牌；默认可走 mock 演示识别，不以第三方视觉服务为前提；
 4. 本地用时序规则把多帧结果融合为事件；
 5. 按车牌归档为案件；
 6. 自动生成证据图、15 秒证据片段和正式举报文书；
@@ -61,16 +61,16 @@
 - 运行命令：
   - `uv run uvicorn src.app.main:app --host 127.0.0.1 --port 8000 --reload`
 - 环境变量模板：`backend/.env.example`
-- 智谱接入位置：`backend/src/app/services/zhipu_client.py`
+- 视觉识别服务入口：`backend/src/app/services/zhipu_client.py`（当前默认可走 mock 演示识别）
 - 视频分析主流程：`backend/src/app/services/analyzer.py`
 - 演示视频生成逻辑：`backend/src/app/services/demo_assets.py`
 - API 主入口：`backend/src/app/main.py`
 
 实现时请遵守：
 
-- 智谱相关能力统一从后端走，不要在前端或 Android 端直连智谱。
+- 视觉识别相关能力统一从后端走，不要在前端或 Android 端直连第三方识别服务。
 - 若需要调整演示素材，优先改 `demo_assets.py` 重新生成，不要直接手改二进制视频。
-- 若本地没有真实智谱 Key，优先使用 `.env` 中的 `USE_MOCK_ZHIPU=true` 进行开发和验证。
+- 默认开发与验证可直接使用 `.env` 中的 `USE_MOCK_ZHIPU=true`；只有在明确配置第三方视觉服务时才切换真实识别。
 - Windows 终端下若遇到中文输出乱码，优先设置 `PYTHONUTF8=1`。
 
 ## 前端约定

@@ -15,7 +15,7 @@
 1. 选择本地演示视频 source；
 2. 发起一次 analysis run；
 3. 后端按时间间隔抽取关键帧；
-4. 调用智谱视觉模型判断是否占用应急车道并读取车牌；
+4. 后端统一调用视觉识别服务判断是否疑似占用应急车道，并尽量读取车牌；默认可走 mock 演示识别，不以第三方视觉服务为前提；
 5. 通过时序融合生成事件；
 6. 按车牌归档为案件；
 7. 生成证据图、15 秒证据片段与正式举报文书；
@@ -83,7 +83,7 @@
 - **Android 已增量并入端侧缓存层**：最近一次成功同步的 `overview / runs / cases / selected case` 与端侧草稿会缓存在手机本地，弱网彩排时仍可继续展示主链；
 - **Android 已并入 newnew 端侧本地检测链**：`com.example.emergencylaneguard.*` 下保留 CameraX / JNI+ncnn / Room 本地案例流，并通过 App 内按钮跳转到端侧检测模式；
 - **Android 真机覆盖安装脚本已补齐**：可通过 `android/scripts/install-debug.sh` 指定 `ANDROID_SERIAL` 完成单设备安装、失败后按需 `--clean` 重装并自动拉起 App；
-- **Web 大屏已完成第一轮重构**：当前是深色驾驶舱式总览，保留 source 选择、run 历史、案件筛选、证据链与举报闭环；
+- **Web 大屏已完成第一轮重构**：当前已对齐 Android 协同端的浅紫主题，保留 source 选择、run 历史、案件筛选、证据链与举报闭环；
 - **后端已新增 device 兼容接口**：支持导入端侧案件快照并输出 `/api/device/sync-snapshot`，用于说明本地链路与云侧后端的兼容路径。
 
 ### Android 当前源码分层
@@ -103,7 +103,7 @@ cd backend
 cp .env.example .env
 ```
 
-没有真实智谱 Key 时，可保留：
+默认演示模式下，可保留：
 
 ```env
 USE_MOCK_ZHIPU=true
