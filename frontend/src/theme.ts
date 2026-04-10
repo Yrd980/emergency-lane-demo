@@ -1,4 +1,4 @@
-export type ThemeKey = 'night-command' | 'amber-alert' | 'jade-ops'
+export type ThemeKey = 'android-sync'
 
 export type ThemeDefinition = {
   key: ThemeKey
@@ -11,28 +11,34 @@ export const THEME_STORAGE_KEY = 'emergency-lane-theme'
 
 export const THEMES: ThemeDefinition[] = [
   {
-    key: 'night-command',
-    label: '夜航指挥',
-    description: '极简暗色',
+    key: 'android-sync',
+    label: '移动协同',
+    description: '与 Android 端一致的浅紫协同主题',
     vars: {
-      '--bg-base': '#0a0a0a',
-      '--bg-layer': '#141414',
-      '--bg-panel': 'transparent',
-      '--bg-panel-strong': 'transparent',
-      '--bg-hero': '#0a0a0a',
-      '--text-primary': '#ffffff',
-      '--text-secondary': '#a1a1aa',
-      '--text-muted': '#71717a',
-      '--accent': '#ffffff',
-      '--accent-strong': '#ffffff',
-      '--accent-soft': 'rgba(255, 255, 255, 0.1)',
-      '--border-soft': 'rgba(255, 255, 255, 0.1)',
-      '--shadow-color': 'transparent',
-      '--success': '#10b981',
-      '--warning': '#f59e0b',
-      '--danger': '#ef4444',
+      '--bg-base': '#f4f0fb',
+      '--bg-base-rgb': '244, 240, 251',
+      '--bg-layer': '#f8f4ff',
+      '--bg-layer-rgb': '248, 244, 255',
+      '--bg-panel': 'rgba(248, 244, 255, 0.88)',
+      '--bg-panel-strong': '#f1eafe',
+      '--bg-panel-soft': 'rgba(255, 255, 255, 0.68)',
+      '--bg-hero': 'linear-gradient(135deg, rgba(159, 134, 255, 0.15), rgba(124, 157, 255, 0.12))',
+      '--text-primary': '#2f1f46',
+      '--text-secondary': '#7a6e92',
+      '--text-muted': '#988cac',
+      '--accent': '#9f86ff',
+      '--accent-strong': '#6f58d9',
+      '--accent-blue': '#7c9dff',
+      '--accent-soft': 'rgba(159, 134, 255, 0.14)',
+      '--accent-soft-strong': 'rgba(159, 134, 255, 0.22)',
+      '--border-soft': '#e4dbf5',
+      '--border-strong': 'rgba(111, 88, 217, 0.22)',
+      '--shadow-color': 'rgba(111, 88, 217, 0.12)',
+      '--success': '#48a57c',
+      '--warning': '#d58a4b',
+      '--danger': '#d76b8f',
     },
-  }
+  },
 ]
 
 export function isThemeKey(value: string): value is ThemeKey {
@@ -45,7 +51,7 @@ export function getTheme(themeKey: ThemeKey): ThemeDefinition {
 
 export function getInitialTheme(): ThemeKey {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
-  return stored && isThemeKey(stored) ? stored : 'night-command'
+  return stored && isThemeKey(stored) ? stored : 'android-sync'
 }
 
 export function applyTheme(themeKey: ThemeKey) {

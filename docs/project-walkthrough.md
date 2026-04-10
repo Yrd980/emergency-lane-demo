@@ -34,6 +34,7 @@ Web 端可完成：
   - review status
   - operator note
 - 在案件进入 `待举报` 后发起模拟举报
+- 以与 Android 端一致的浅紫协同主题展示 overview、列表、详情、证据链与反馈状态，适合现场连续演示双端联动
 
 ### 5. Android 端协同路径
 Android 端连接同一套后端接口，完成：

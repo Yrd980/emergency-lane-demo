@@ -194,6 +194,7 @@ function renderHeader() {
 function renderCommandDeck() {
   const source = selectedSource()
   const latestRun = state.overview?.latest_run
+  const summary = state.overview?.summary
 
   return `
     <section class="command-deck panel-entrance">
@@ -201,7 +202,12 @@ function renderCommandDeck() {
         <div class="hero-intro">
           <p class="eyebrow">项目展示</p>
           <h1>高速公路应急车道违章辅助举报</h1>
-          <p class="deck-summary">围绕 FastAPI 数据源，Web 端展示项目能力，Android 端协同复核，让从视频输入到案件输出的全过程清晰可见。</p>
+          <p class="deck-summary">围绕 FastAPI 数据源，Web 端展示项目全链路，Android 端承担移动协同复核，让从视频输入到案件输出的全过程清晰可见。</p>
+        </div>
+        <div class="deck-tags">
+          <span>FastAPI 主数据源</span>
+          <span>Android 协同复核</span>
+          <span>证据链与文书联动</span>
         </div>
         <div class="hero-actions">
           <label class="field">
@@ -220,12 +226,20 @@ function renderCommandDeck() {
         </div>
         <div class="deck-meta">
           <div>
-            <span>Web 端</span>
-            <strong>项目总览 / 数据展示 / 分析触发</strong>
+            <span>当前案件数</span>
+            <strong>${summary?.total_cases ?? state.cases.length} 个</strong>
           </div>
           <div>
-            <span>Android 端</span>
-            <strong>移动查看 / 协同复核 / 状态同步</strong>
+            <span>待复核</span>
+            <strong>${summary?.pending_review_cases ?? state.cases.filter((item) => item.review_status === '待复核').length} 个</strong>
+          </div>
+          <div>
+            <span>已完成举报</span>
+            <strong>${summary?.reported_cases ?? state.cases.filter((item) => item.status === '已举报').length} 个</strong>
+          </div>
+          <div>
+            <span>当前视频源</span>
+            <strong>${escapeHtml(source?.title ?? '暂无视频源')}</strong>
           </div>
         </div>
       </div>
@@ -237,7 +251,7 @@ function renderCommandDeck() {
               <strong>${escapeHtml(source?.title ?? '暂无视频源')}</strong>
               <p>${escapeHtml(source ? `${source.location} · ${source.lane_label}` : '请选择视频源以展示项目识别与取证结果')}</p>
             </div>
-            ${latestRun ? `<div><strong>最新运行</strong><p>${escapeHtml(latestRun.status)} · ${latestRun.event_count} 事件</p></div>` : ''}
+            ${latestRun ? `<div><strong>最新运行</strong><p>${escapeHtml(latestRun.source_name)} · ${latestRun.event_count} 事件 / ${latestRun.case_count} 案件</p></div>` : '<div><strong>最新运行</strong><p>暂无运行记录</p></div>'}
           </div>
         </div>
       </div>
