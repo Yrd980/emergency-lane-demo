@@ -30,7 +30,6 @@ import com.example.emergencylaneguard.LocalDetectionActivity
 import com.yrd.emergencylanemobile.ui.components.InfoCard
 import com.yrd.emergencylanemobile.ui.screens.CaseDetailSection
 import com.yrd.emergencylanemobile.ui.screens.CaseRow
-import com.yrd.emergencylanemobile.ui.screens.ConnectionSection
 import com.yrd.emergencylanemobile.ui.screens.FilterSection
 import com.yrd.emergencylanemobile.ui.screens.HeaderSection
 import com.yrd.emergencylanemobile.ui.screens.RunSummarySection
@@ -46,7 +45,7 @@ fun MobileApp() {
     val viewModel: MainViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsState()
 
-    Scaffold(topBar = { TopAppBar(title = { Text("应急车道移动协同端") }) }) { innerPadding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("应急车道移动端") }) }) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,17 +62,15 @@ fun MobileApp() {
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     item {
-                        ConnectionSection(
-                            state = state,
-                            onRefresh = { viewModel.refresh() },
-                            onApplyBaseUrl = { viewModel.applyDebugApiBaseUrl(it) },
-                            onClearOverride = { viewModel.clearDebugApiBaseUrlOverride() },
+                        InfoCard(
+                            title = "端侧本地检测模式",
+                            body = "Android 端默认聚焦 newnew 并入后的 CameraX + JNI/ncnn + Room 本地链路，用于端侧检测、待处理和本地案例演示。",
                         )
                     }
                     item {
                         InfoCard(
-                            title = "端侧本地检测模式",
-                            body = "已并入 newnew 的 CameraX + JNI/ncnn + Room 本地链路。这里保留云侧协同端，同时可跳转到端侧检测/待处理/本地案例模式用于毕设演示。",
+                            title = "云侧协同说明",
+                            body = "云侧案件数据仍由同一套 FastAPI 提供，但不再在 Android 首页暴露 API 调试入口；本页仅保留案件查看、复核草稿与举报辅助能力。",
                         )
                     }
                     item {
