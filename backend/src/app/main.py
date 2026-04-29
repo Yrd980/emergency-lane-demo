@@ -122,8 +122,8 @@ def overview(request: Request) -> dict[str, Any]:
         "pipeline": pipeline_payload(),
         "system": {
             "web_role": "总览 / run 历史 / 事件案件筛选 / 证据链展示",
-            "android_role": "云侧协同查看 / 端侧本地检测演示 / 案件复核辅助 / 举报状态同步",
-            "reference_basis": "Android 已并入 newnew 端侧链路，用于 CameraX/JNI/Room 本地检测演示；FastAPI 主链继续承担案件归档、证据链与举报闭环。",
+            "android_role": "端侧独立检测演示（CameraX / YOLOv8+ncnn / HyperLPR3 / Room），不依赖 Web 后端",
+            "reference_basis": "Web 端为纯 Mock 原型演示；Android 端为端侧真机检测能力演示，两者独立运行、互不依赖。",
         },
         "device_sync": {
             "device_case_count": len(db.list_device_cases()),

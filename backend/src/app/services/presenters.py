@@ -195,7 +195,7 @@ def pipeline_payload() -> list[dict[str, Any]]:
         {
             "key": "vision",
             "title": "视觉识别",
-            "owner": "Backend + 智谱",
+            "owner": "Backend (Mock 视觉推理)",
             "summary": "识别应急车道占用与车牌信息，保留每帧原始识别原因和置信度。",
             "evidence": ["车牌号", "违规原因", "置信度"],
         },

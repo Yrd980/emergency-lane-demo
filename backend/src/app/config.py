@@ -14,9 +14,6 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_prefix: str = "/api"
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173"
-    zhipu_api_key: str = ""
-    zhipu_model: str = "glm-4v-flash"
-    use_mock_zhipu: bool = False
     frame_interval_seconds: float = 1.0
     violation_hold_seconds: float = 3.0
     case_clip_seconds: float = 15.0

@@ -1,7 +1,5 @@
 package com.yrd.emergencylanemobile.ui.screens
 
-import android.net.Uri
-import android.widget.VideoView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,12 +27,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.yrd.emergencylanemobile.model.MobileCaseDetail
 import com.yrd.emergencylanemobile.model.MobileCaseSummary
 import com.yrd.emergencylanemobile.model.MobileLocalDraft
 import com.yrd.emergencylanemobile.ui.components.InfoCard
+
+private val InkPrimary = Color(0xFF2F1F46)
+private val InkSecondary = Color(0xFF7A6E92)
+private val AccentPurple = Color(0xFF9F86FF)
+private val AccentRose = Color(0xFFE68BAF)
+private val SoftSurface = Color(0xFFF8F4FF)
+private val SoftSurfaceStrong = Color(0xFFF1EAFE)
 
 @Composable
 fun CaseRow(item: MobileCaseSummary, selected: Boolean, onClick: () -> Unit) {
@@ -42,20 +46,25 @@ fun CaseRow(item: MobileCaseSummary, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFF153257) else Color(0xFF0F172A)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFF0E8FF) else SoftSurface),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = item.id, color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelMedium)
-            Text(text = item.correctedPlateNumber ?: item.plateNumber, color = Color.White, fontWeight = FontWeight.Bold)
-            Text(text = item.summary, color = Color(0xFFD7E3FF))
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = item.id, color = AccentPurple, style = MaterialTheme.typography.labelMedium)
+            Text(text = item.correctedPlateNumber ?: item.plateNumber, color = InkPrimary, fontWeight = FontWeight.Bold)
+            Text(text = item.summary, color = InkSecondary)
             Text(
                 text = "${item.status} · ${item.reviewStatus} · ${item.sourceName}",
-                color = Color(0xFFBFD0EA),
+                color = InkSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "置信度 ${String.format(java.util.Locale.US, "%.2f", item.confidence)} · ${item.evidenceCount} 张证据图 · ${item.eventCount} 个事件",
+                color = InkSecondary,
                 style = MaterialTheme.typography.bodySmall,
             )
             if (item.operatorNote.isNotBlank()) {
-                Text(text = item.operatorNote, color = Color(0xFF93C5FD), style = MaterialTheme.typography.bodySmall)
+                Text(text = item.operatorNote, color = AccentPurple, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -85,42 +94,26 @@ fun CaseDetailSection(
     var localReviewStatus by remember(detail.id, localDraft?.reviewStatus) { mutableStateOf(localDraft?.reviewStatus ?: reviewStatus) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "${detail.id} / ${detail.plateNumber}", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(text = "run: ${detail.runId} · source: ${detail.sourceName}", color = Color(0xFF93C5FD))
-                Text(text = detail.summary, color = Color(0xFFD7E3FF))
-                Text(text = "状态 ${detail.status} · 复核 ${detail.reviewStatus}", color = Color(0xFFBFD0EA))
-                detail.clipUrl?.let { clipUrl ->
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(210.dp)
-                            .clip(RoundedCornerShape(18.dp)),
-                        factory = { context ->
-                            VideoView(context).apply {
-                                setVideoURI(Uri.parse(clipUrl))
-                                setOnPreparedListener { mediaPlayer ->
-                                    mediaPlayer.isLooping = true
-                                    start()
-                                }
-                            }
-                        },
-                        update = { view ->
-                            view.setVideoURI(Uri.parse(clipUrl))
-                            view.setOnPreparedListener { mediaPlayer ->
-                                mediaPlayer.isLooping = true
-                                view.start()
-                            }
-                        },
-                    )
-                }
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = SoftSurface)) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "${detail.id} / ${detail.plateNumber}", color = InkPrimary, fontWeight = FontWeight.Bold)
+                Text(text = "run: ${detail.runId} · source: ${detail.sourceName}", color = AccentPurple)
+                Text(text = detail.summary, color = InkSecondary)
+                Text(text = "状态 ${detail.status} · 复核 ${detail.reviewStatus}", color = InkSecondary)
+                Text(
+                    text = if (detail.clipUrl.isNullOrBlank()) {
+                        "本案当前无独立 clip 地址，展示片段已统一放到上方本地证据区，避免播放不稳定的远程视频。"
+                    } else {
+                        "案件片段展示已切到上方 APK 内置 clip，用于稳定讲解闭环；原始 clip 链接仅保留为数据字段，不在这里直接播放。"
+                    },
+                    color = InkSecondary,
+                )
             }
         }
 
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "人工复核", color = Color.White, fontWeight = FontWeight.Bold)
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = SoftSurface)) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "人工复核", color = InkPrimary, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = correctedPlate,
                     onValueChange = { correctedPlate = it },
@@ -138,7 +131,7 @@ fun CaseDetailSection(
                         TextButton(onClick = { reviewStatus = option }) {
                             Text(
                                 text = option,
-                                color = if (reviewStatus == option) Color(0xFF38BDF8) else Color(0xFFD7E3FF),
+                                color = if (reviewStatus == option) AccentPurple else InkSecondary,
                                 fontWeight = if (reviewStatus == option) FontWeight.Bold else FontWeight.Normal,
                             )
                         }
@@ -152,16 +145,16 @@ fun CaseDetailSection(
                         Text(if (detail.status == "待举报") "提交案件模拟举报" else "待复核后再举报")
                     }
                 }
-                Text(text = detail.reportContent ?: "暂无文书", color = Color(0xFFD7E3FF))
+                Text(text = detail.reportContent ?: "暂无文书", color = InkSecondary)
             }
         }
 
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "端侧增强链路（本机缓存）", color = Color.White, fontWeight = FontWeight.Bold)
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = SoftSurface)) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "端侧补充草稿", color = InkPrimary, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "为后续 CameraX / JNI / ncnn/YOLO / HyperLPR 输入预留的本机草稿位；当前仅保存到设备缓存，用于真机彩排和弱网补录。",
-                    color = Color(0xFFD7E3FF),
+                    text = "本机缓存草稿用于端侧现场补录与离线演示，数据仅保存在本机。",
+                    color = InkSecondary,
                 )
                 OutlinedTextField(
                     value = localPlateCandidate,
@@ -180,14 +173,14 @@ fun CaseDetailSection(
                         TextButton(onClick = { localReviewStatus = option }) {
                             Text(
                                 text = option,
-                                color = if (localReviewStatus == option) Color(0xFF38BDF8) else Color(0xFFD7E3FF),
+                                color = if (localReviewStatus == option) AccentPurple else InkSecondary,
                                 fontWeight = if (localReviewStatus == option) FontWeight.Bold else FontWeight.Normal,
                             )
                         }
                     }
                 }
                 localDraft?.savedAt?.let { savedAt ->
-                    Text(text = "最近缓存：$savedAt · ${localDraft.inputMode}", color = Color(0xFF93C5FD))
+                    Text(text = "最近缓存：$savedAt · ${localDraft.inputMode}", color = AccentPurple)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { onSaveLocalDraft(detail.id, localPlateCandidate, localSceneNote, localReviewStatus) }, enabled = !busy) {
@@ -205,11 +198,11 @@ fun CaseDetailSection(
             }
         }
 
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "关键证据", color = Color.White, fontWeight = FontWeight.Bold)
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = SoftSurface)) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "关键证据", color = InkPrimary, fontWeight = FontWeight.Bold)
                 if (detail.evidence.isEmpty()) {
-                    Text(text = "暂无证据图", color = Color(0xFFBFD0EA))
+                    Text(text = "暂无证据图", color = InkSecondary)
                 } else {
                     detail.evidence.take(3).forEach { item ->
                         AsyncImage(
@@ -218,20 +211,20 @@ fun CaseDetailSection(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(180.dp)
-                                .clip(RoundedCornerShape(16.dp)),
+                                .clip(RoundedCornerShape(18.dp)),
                         )
-                        Text(text = "${item.label} · ${item.capturedAt}", color = Color(0xFFBFD0EA), style = MaterialTheme.typography.bodySmall)
+                        Text(text = "${item.label} · ${item.capturedAt}", color = InkSecondary, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         }
 
         if (detail.events.isNotEmpty()) {
-            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B2F))) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "关联事件", color = Color.White, fontWeight = FontWeight.Bold)
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = SoftSurfaceStrong)) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "关联事件", color = InkPrimary, fontWeight = FontWeight.Bold)
                     detail.events.forEach { event ->
-                        Text(text = "${event.id} · ${event.status} · ${event.firstSeen}", color = Color(0xFFD7E3FF))
+                        Text(text = "${event.id} · ${event.status} · ${event.firstSeen}", color = InkSecondary)
                     }
                 }
             }

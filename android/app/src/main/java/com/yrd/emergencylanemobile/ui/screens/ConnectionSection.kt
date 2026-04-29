@@ -47,7 +47,7 @@ fun ConnectionSection(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "先确认当前 API 地址、最近一次总览拉取结果与缓存状态，再做案件复核、端侧草稿与举报同步。",
+                text = "Android 端侧独立演示模式 — 当前展示内置离线数据。如需联调 Web 后端，可在此配置 API 地址。",
                 color = Color(0xFFD7E3FF),
             )
             InfoCard(title = "当前 API", body = connection.activeBaseUrl)
@@ -86,7 +86,7 @@ fun ConnectionSection(
             }
             InfoCard(
                 title = "联调提示",
-                body = "后端请使用 0.0.0.0 或开发机局域网 IP 启动；真机与开发机需在同一网段；若现场网络抖动，可先保存端侧草稿，再回到在线状态提交到 FastAPI。",
+                body = "本页主要服务于彩排调试场景。日常演示使用 APK 内置离线数据即可，无需连接后端。若需联调，后端使用 0.0.0.0 启动且真机在同一网段。",
             )
             if (BuildConfig.DEBUG) {
                 OutlinedTextField(

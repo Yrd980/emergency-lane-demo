@@ -26,7 +26,7 @@ class RunStatusResponse(BaseModel):
     id: str
     source_name: str
     status: Literal["running", "done", "failed"]
-    mode: Literal["zhipu", "mock"]
+    mode: Literal["mock"]
     started_at: str | None = None
     finished_at: str | None = None
     progress_percent: int = 0

@@ -15,7 +15,7 @@ from .. import db
 from ..config import settings
 from ..time_utils import parse_timestamp, utc_now_compact
 from .demo_assets import default_source_name, ensure_demo_assets, get_source_info
-from .zhipu_client import ZhipuVisionService
+from .mock_vision import MockVisionService
 
 
 @dataclass
@@ -27,7 +27,7 @@ class FrameHit:
 
 class VideoAnalysisService:
     def __init__(self) -> None:
-        self.vision = ZhipuVisionService()
+        self.vision = MockVisionService()
         self.lock = threading.Lock()
         self.thread: threading.Thread | None = None
         self.current_run_id: str | None = None
