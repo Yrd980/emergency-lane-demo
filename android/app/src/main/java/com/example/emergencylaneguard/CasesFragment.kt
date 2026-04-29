@@ -51,19 +51,19 @@ class CasesFragment : Fragment(R.layout.fragment_cases) {
                 }
             },
             onSelectionChanged = { count ->
-                btnDelete.text = "Delete ($count)"
-                btnClipVideo.text = "Clip Video ($count)"
+                btnDelete.text = "删除 ($count)"
+                btnClipVideo.text = "生成 Clip ($count)"
                 btnDelete.isEnabled = count > 0
                 btnClipVideo.isEnabled = count > 0
             },
             onModeChanged = { enabled ->
                 isSelectionMode = enabled
                 if (enabled) {
-                    btnSelectMode.text = "Cancel"
+                    btnSelectMode.text = "取消"
                     btnSelectAll.visibility = View.VISIBLE
                     bottomActionBar.visibility = View.VISIBLE
                 } else {
-                    btnSelectMode.text = "Select"
+                    btnSelectMode.text = "选择"
                     btnSelectAll.visibility = View.GONE
                     bottomActionBar.visibility = View.GONE
                 }
@@ -90,32 +90,18 @@ class CasesFragment : Fragment(R.layout.fragment_cases) {
             adapter.submitList(list)
         }
 
-        // Select Mode Toggle
-        btnSelectMode.setOnClickListener {
-            isSelectionMode = !isSelectionMode
-            adapter.setSelectionMode(isSelectionMode)
-            
-            if (isSelectionMode) {
-                btnSelectMode.text = "Cancel"
-                bottomActionBar.visibility = View.VISIBLE
-            } else {
-                btnSelectMode.text = "Select"
-                bottomActionBar.visibility = View.GONE
-            }
-        }
-
         // Batch Delete
         btnDelete.setOnClickListener {
             val plates = adapter.getSelectedPlates()
             if (plates.isNotEmpty()) {
                 AlertDialog.Builder(requireContext())
-                    .setTitle("Delete")
-                    .setMessage("Delete ${plates.size} cases? This will remove all records in them.")
-                    .setPositiveButton("Yes") { _, _ ->
+                    .setTitle("删除案例")
+                    .setMessage("确认删除 ${plates.size} 个案例？其下属记录会一并移除。")
+                    .setPositiveButton("删除") { _, _ ->
                         viewModel.deleteCases(plates)
                         exitSelectionMode(adapter, btnSelectMode, bottomActionBar)
                     }
-                    .setNegativeButton("No", null)
+                    .setNegativeButton("取消", null)
                     .show()
             }
         }
@@ -125,7 +111,7 @@ class CasesFragment : Fragment(R.layout.fragment_cases) {
             val plates = adapter.getSelectedPlates()
             if (plates.isNotEmpty()) {
                 viewModel.clipVideoForCase(plates)
-                Toast.makeText(context, "Clipping video for ${plates.size} cases in background...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "已开始为 ${plates.size} 个案例生成 clip", Toast.LENGTH_SHORT).show()
                 exitSelectionMode(adapter, btnSelectMode, bottomActionBar)
             }
         }
@@ -134,7 +120,7 @@ class CasesFragment : Fragment(R.layout.fragment_cases) {
     private fun exitSelectionMode(adapter: CasesAdapter, btnSelectMode: Button, bottomActionBar: View) {
         isSelectionMode = false
         adapter.setSelectionMode(false)
-        btnSelectMode.text = "Select"
+        btnSelectMode.text = "选择"
         bottomActionBar.visibility = View.GONE
     }
 }

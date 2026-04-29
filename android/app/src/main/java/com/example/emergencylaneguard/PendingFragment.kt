@@ -72,19 +72,19 @@ class PendingFragment : Fragment(R.layout.fragment_pending) {
                 }
             },
             onSelectionChanged = { count ->
-                btnBatchDelete.text = "Delete ($count)"
-                btnBatchProcess.text = "Process AI ($count)"
+                btnBatchDelete.text = "删除 ($count)"
+                btnBatchProcess.text = "AI 检测 ($count)"
                 btnBatchDelete.isEnabled = count > 0
                 btnBatchProcess.isEnabled = count > 0
             },
             onModeChanged = { enabled ->
                 isSelectionMode = enabled
                 if (enabled) {
-                    btnSelectMode.text = "Cancel"
+                    btnSelectMode.text = "取消"
                     btnSelectAll.visibility = View.VISIBLE
                     bottomActionBar.visibility = View.VISIBLE
                 } else {
-                    btnSelectMode.text = "Select"
+                    btnSelectMode.text = "选择"
                     btnSelectAll.visibility = View.GONE
                     bottomActionBar.visibility = View.GONE
                 }
@@ -98,11 +98,11 @@ class PendingFragment : Fragment(R.layout.fragment_pending) {
             adapter.setSelectionMode(isSelectionMode)
             
             if (isSelectionMode) {
-                btnSelectMode.text = "Cancel"
+                btnSelectMode.text = "取消"
                 btnSelectAll.visibility = View.VISIBLE
                 bottomActionBar.visibility = View.VISIBLE
             } else {
-                btnSelectMode.text = "Select"
+                btnSelectMode.text = "选择"
                 btnSelectAll.visibility = View.GONE
                 bottomActionBar.visibility = View.GONE
             }
@@ -118,13 +118,13 @@ class PendingFragment : Fragment(R.layout.fragment_pending) {
             val ids = adapter.getSelectedIds()
             if (ids.isNotEmpty()) {
                 AlertDialog.Builder(requireContext())
-                    .setTitle("Delete")
-                    .setMessage("Delete ${ids.size} items?")
-                    .setPositiveButton("Yes") { _, _ ->
+                    .setTitle("删除素材")
+                    .setMessage("确认删除 ${ids.size} 个素材？")
+                    .setPositiveButton("删除") { _, _ ->
                         viewModel.deleteViolations(ids)
                         exitSelectionMode(adapter, btnSelectMode, bottomActionBar)
                     }
-                    .setNegativeButton("No", null)
+                    .setNegativeButton("取消", null)
                     .show()
             }
         }
@@ -137,7 +137,7 @@ class PendingFragment : Fragment(R.layout.fragment_pending) {
                 val selectedRecords = allRecords.filter { it.id in ids }
                 
                 viewModel.processViolations(selectedRecords)
-                Toast.makeText(context, "Processing ${ids.size} images in background...", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "已提交 ${ids.size} 张图片进行 AI 检测", Toast.LENGTH_LONG).show()
                 
                 exitSelectionMode(adapter, btnSelectMode, bottomActionBar)
             }
@@ -171,7 +171,7 @@ class PendingFragment : Fragment(R.layout.fragment_pending) {
     private fun exitSelectionMode(adapter: ViolationAdapter, btnSelectMode: Button, bottomActionBar: View) {
         isSelectionMode = false
         adapter.setSelectionMode(false)
-        btnSelectMode.text = "Select"
+        btnSelectMode.text = "选择"
         bottomActionBar.visibility = View.GONE
     }
 }

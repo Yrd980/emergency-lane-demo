@@ -32,6 +32,9 @@ interface ViolationDao {
     
     @Query("SELECT * FROM violation_records WHERE id = :id LIMIT 1")
     suspend fun getViolationById(id: Long): ViolationRecord?
+
+    @Query("SELECT COUNT(*) FROM violation_records WHERE imagePath = :imagePath")
+    suspend fun countByImagePath(imagePath: String): Int
     
     @Query("DELETE FROM violation_records WHERE id = :id")
     suspend fun deleteById(id: Long)

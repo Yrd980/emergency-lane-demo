@@ -25,6 +25,7 @@ import com.hyperai.hyperlpr3.HyperLPR3
 import com.hyperai.hyperlpr3.bean.HyperLPRParameter
 
 import android.content.Context
+import java.io.FileOutputStream
 
 class ViolationViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = AppDatabase.getDatabase(application).violationDao()
@@ -40,6 +41,7 @@ class ViolationViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (e: Exception) {
             Log.e("HyperLPR3", "SDK Initialization failed", e)
         }
+        seedBundledPendingSamples()
     }
 
     val pendingViolations = dao.getPendingViolations().asLiveData()
@@ -60,6 +62,39 @@ class ViolationViewModel(application: Application) : AndroidViewModel(applicatio
                 Log.d("ViolationViewModel", "Record inserted with id=$id")
             } catch (e: Exception) {
                 Log.e("ViolationViewModel", "Failed to insert record", e)
+            }
+        }
+    }
+
+    private fun seedBundledPendingSamples() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val targetDir = File(app.cacheDir, "bundled_pending_samples").apply { mkdirs() }
+            val bundled = listOf(
+                Triple("local_demo_samples/yes-1.png", "示例图-疑似占用 1", 1L),
+                Triple("local_demo_samples/yes-2.png", "示例图-疑似占用 2", 2L),
+                Triple("local_demo_samples/no-1.png", "示例图-未占用 1", 3L),
+                Triple("local_demo_samples/no-2.png", "示例图-未占用 2", 4L),
+            )
+
+            bundled.forEach { (assetPath, label, order) ->
+                val outFile = File(targetDir, assetPath.substringAfterLast('/'))
+                if (!outFile.exists()) {
+                    app.assets.open(assetPath).use { input ->
+                        FileOutputStream(outFile).use { output -> input.copyTo(output) }
+                    }
+                }
+                if (dao.countByImagePath(outFile.absolutePath) == 0) {
+                    dao.insert(
+                        ViolationRecord(
+                            plateNumber = label,
+                            timestamp = System.currentTimeMillis() - order * 1000L,
+                            videoPath = "",
+                            imagePath = outFile.absolutePath,
+                            status = ViolationRecord.STATUS_PENDING,
+                        )
+                    )
+                }
             }
         }
     }
