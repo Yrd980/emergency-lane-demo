@@ -25,3 +25,4 @@ android/local.properties
 android/.idea/
 android/app/.cxx/
 origin/
+.worktrees/
