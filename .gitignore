@@ -12,6 +12,7 @@ frontend/dist/
 .playwright-mcp/
 
 storage/
+!backend/src/app/storage/
 __pycache__/
 *.pyc
 
