@@ -48,7 +48,8 @@ class Pipeline:
         self._decider: ViolationDecider | None = None
         self._fps: float = 30.0
 
-    def run(self, video_path: Path, sample_every: int = 1) -> PipelineResult:
+    def run(self, video_path: Path, sample_every: int = 1,
+            ground_truth: dict[str, list[dict]] | None = None) -> PipelineResult:
         cap = cv2.VideoCapture(str(video_path))
         self._fps = cap.get(cv2.CAP_PROP_FPS)
         if self._fps <= 0:
@@ -72,7 +73,7 @@ class Pipeline:
                 frame_idx += 1
                 continue
 
-            fr = self._process_frame(frame, frame_idx)
+            fr = self._process_frame(frame, frame_idx, ground_truth)
             frame_results.append(fr)
             self._decider.update(FrameVerdict(
                 frame_idx=frame_idx,
@@ -92,12 +93,22 @@ class Pipeline:
             total_frames=frame_idx,
         )
 
-    def _process_frame(self, frame: np.ndarray, frame_idx: int) -> FrameResult:
+    def _process_frame(self, frame: np.ndarray, frame_idx: int,
+                       ground_truth: dict[str, list[dict]] | None = None) -> FrameResult:
         line = detect_lane_line(frame)
         masked, mask = apply_region_mask(frame, line)
 
-        raw_dets = self._detector.detect(masked, conf_threshold=self.conf_threshold)
-        vehicles = filter_vehicles(raw_dets, conf_threshold=self.conf_threshold)
+        if ground_truth is not None and str(frame_idx) in ground_truth:
+            vehicles = [
+                Detection(
+                    x=g["x"], y=g["y"], w=g["w"], h=g["h"],
+                    score=1.0, cls=2, label=g["label"],
+                )
+                for g in ground_truth[str(frame_idx)]
+            ]
+        else:
+            raw_dets = self._detector.detect(masked, conf_threshold=self.conf_threshold)
+            vehicles = filter_vehicles(raw_dets, conf_threshold=self.conf_threshold)
 
         violations = check_vehicle_in_region(vehicles, mask)
 

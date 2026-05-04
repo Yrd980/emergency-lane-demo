@@ -75,7 +75,10 @@ class ViolationDecider:
 
     def finalize(self) -> list[ViolationSegment]:
         """处理缓冲区剩余帧，返回所有违规段。"""
-        if self._in_violation and self._buffer:
+        if not self._buffer:
+            return self._segments
+
+        if self._in_violation:
             end_frame = self._buffer[-1].frame_idx
             duration = end_frame - self._segment_start
             confidences = [v.max_confidence for v in self._buffer
@@ -89,4 +92,19 @@ class ViolationDecider:
                 confidence=avg_conf,
             ))
             self._in_violation = False
+        elif len(self._buffer) < self.window_frames and len(self._buffer) > 0:
+            # 视频总长不足窗口大小时，用可用帧判定
+            violation_count = sum(1 for v in self._buffer if v.has_violation)
+            ratio = violation_count / len(self._buffer)
+            if ratio >= self.ratio_threshold:
+                confidences = [v.max_confidence for v in self._buffer
+                               if v.has_violation]
+                avg_conf = sum(confidences) / max(len(confidences), 1)
+                self._segments.append(ViolationSegment(
+                    start_frame=self._buffer[0].frame_idx,
+                    end_frame=self._buffer[-1].frame_idx,
+                    duration_frames=self._buffer[-1].frame_idx - self._buffer[0].frame_idx,
+                    occupancy_ratio=ratio,
+                    confidence=avg_conf,
+                ))
         return self._segments

@@ -1,6 +1,7 @@
-"""视频合成器 — 帧合成 → mp4 文件."""
+"""视频合成器 — 帧合成 → mp4 文件 + 地面真值."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import cv2
@@ -25,10 +26,24 @@ def compose_video(output_path: Path,
         str(output_path), fourcc, fps, (1280, 720)
     )
 
+    ground_truth: dict[int, list[dict]] = {}
+
     for frame_idx in range(total_frames):
         img = render_highway_frame(seed=seed)
         vehicles = update_vehicles(vehicles, frame_idx, seed=seed)
         img = draw_vehicles(img, vehicles)
+
+        ground_truth[str(frame_idx)] = [
+            {
+                "x": v.x - v.w / 2,
+                "y": v.y - v.h / 2,
+                "w": v.w,
+                "h": v.h,
+                "label": v.vehicle_type,
+                "in_emergency_lane": v.in_emergency_lane,
+            }
+            for v in vehicles
+        ]
 
         frame_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         cv2.putText(frame_bgr, f"frame {frame_idx:05d}",
@@ -36,4 +51,8 @@ def compose_video(output_path: Path,
         writer.write(frame_bgr)
 
     writer.release()
+
+    gt_path = output_path.with_suffix(".gt.json")
+    gt_path.write_text(json.dumps(ground_truth, ensure_ascii=False))
+
     return output_path

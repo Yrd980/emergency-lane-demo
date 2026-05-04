@@ -1,6 +1,8 @@
 """POST /api/analyze/{video_id} — 运行算法管线."""
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException
 
 from algorithm.pipeline import Pipeline
@@ -24,6 +26,11 @@ def analyze(video_id: str) -> dict:
     if existing:
         return {"status": "done", "video_id": video_id, "message": "分析已完成"}
 
+    gt_path = vp.with_suffix(".gt.json")
+    ground_truth = None
+    if gt_path.exists():
+        ground_truth = json.loads(gt_path.read_text())
+
     pipeline = Pipeline(
         conf_threshold=settings.detection_conf_threshold,
         window_seconds=settings.window_seconds,
@@ -31,7 +38,7 @@ def analyze(video_id: str) -> dict:
         device="cpu",
     )
 
-    result = pipeline.run(vp, sample_every=2)
+    result = pipeline.run(vp, sample_every=2, ground_truth=ground_truth)
 
     frame_dir = result_frame_dir(video_id)
     frame_dir.mkdir(parents=True, exist_ok=True)
