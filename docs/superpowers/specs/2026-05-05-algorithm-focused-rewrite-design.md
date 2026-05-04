@@ -1,6 +1,6 @@
 # 项目重建设计文档：算法类毕设方向
 
-日期：2026-05-05
+日期：2026-05-05 | 最后更新：2026-05-05
 
 ## 1. 定位与目标
 
@@ -126,6 +126,8 @@ def run(video_path, config):
 
 - 模块一采用 white threshold + Canny + HoughLinesP + 固定几何约束。在论文中定位为"先验知识引入"——高速公路应急车道的位置规律作为合理先验
 - 模块四代码实现采用简单滑动窗口（15s 窗口，>60% 占用帧比例判定违规），论文中讨论更复杂方案（如 ByteTrack 跟踪 + 个体持续时长）的可行性和方向
+- `finalize()` 处理视频总长不足窗口大小的边界情况，以可用帧比率判定
+- pipeline 支持可选的 `ground_truth` 参数：对于合成视频（Pillow 绘制的矩形车辆无法被 YOLO 识别），使用合成时记录的 ground-truth 车辆位置作为检测输入；真实视频仍走 YOLO 检测路径
 - 可视化负责：掩膜区域叠加、检测框绘制、时间轴图生成
 
 ---
@@ -191,6 +193,7 @@ frontend                    backend                      algorithm
 - seed 保证可复现
 - 违规场景：车辆驶入应急车道并持续 10-20 秒
 - backend 的 synthesis/ 与 algorithm/ 各自职责明确：synthesis 生成数据，algorithm 消费数据
+- **Ground-truth 记录**：合成时每帧的车辆位置同步写入 `{video_id}.gt.json`，供 pipeline 以 ground-truth 模式运行（替代 YOLO 检测，因为 Pillow 绘制的矩形色块无法被 YOLO 识别为车辆）
 
 ---
 
@@ -198,24 +201,18 @@ frontend                    backend                      algorithm
 
 ### 目录结构
 
+实际实现为单文件模式（`main.ts` 内联渲染所有 UI，无组件拆分）：
+
 ```
 frontend/
 ├── src/
-│   ├── main.ts              # 入口：挂载应用
-│   ├── style.css            # 样式
-│   ├── types.ts             # TypeScript 类型
-│   ├── api.ts               # fetch 封装（3个端点）
-│   ├── state.ts             # 简单状态管理
-│   │
-│   ├── components/
-│   │   ├── App.ts           # 根组件：单页布局
-│   │   ├── ControlBar.ts    # 顶部操作栏（生成视频 / 开始分析 / 重置）
-│   │   ├── VideoStage.ts    # 视频播放 + 检测框叠加层
-│   │   ├── DetectionOverlay.ts  # Canvas 叠加层（检测框 + 掩膜区域）
-│   │   ├── ViolationTimeline.ts # 视频下方时间轴，标记违规段
-│   │   └── FrameStrip.ts    # 关键帧缩略图横条（违规瞬间的帧）
+│   ├── main.ts              # 单页应用入口（内联 HTML + 状态 + 事件绑定 + Canvas 同步）
+│   ├── style.css            # 暗色主题样式
+│   ├── types.ts             # TypeScript 类型（SynthesisRequest/Response, AnalysisResult 等）
+│   ├── api.ts               # fetch 封装（3 个端点）
+│   ├── config.ts            # API_BASE_URL
 │   └── utils/
-│       └── draw.ts          # Canvas 绘图工具
+│       └── draw.ts          # Canvas 绘图工具（检测框 + 时间轴）
 │
 ├── index.html
 ├── package.json
@@ -279,21 +276,24 @@ android/
 │   │   ├── yolov8n.param
 │   │   └── yolov8n.bin
 │   │
-│   └── java/.../
+│   └── java/com/example/emergencylaneguard/
 │       ├── LaneDetector.kt           ← 保留 JNI 封装
-│       ├── BenchmarkActivity.kt      ← 新增：基准测试 UI
-│       └── BenchmarkViewModel.kt     ← 新增：跑 YOLO 并记录指标
+│       ├── OverlayView.kt            ← 保留检测框绘制
+│       └── BenchmarkActivity.kt      ← 新增：基准测试 UI
 ```
 
 ### 删除项
 
-- HomeFragment.kt（CameraX + 录像 + 检测联动）
-- PendingFragment.kt（违规列表）
-- CasesFragment.kt（案例管理）
+- CaseDetailActivity.kt, VideoPlayerActivity.kt, RecordsActivity.kt, SettingsActivity.kt, MainActivity.kt
+- HomeFragment.kt, PendingFragment.kt, CasesFragment.kt
+- CasesAdapter.kt, ViolationAdapter.kt
 - ViolationViewModel.kt（HyperLPR3 + Room + StepFun）
-- VideoTrimmer.kt
+- VideoTrimmer.kt, utils/MediaStoreUtils.kt
 - network/（StepFun API 客户端）
 - database/（Room 实体和 DAO）
+- com.yrd.emergencylanemobile/（Jetpack Compose 重写版本全部代码）
+- 旧 layout/menu 资源文件
+- build.gradle.kts 移除 Compose、Room、Retrofit、Coil、Glide、HyperLPR3 依赖
 
 ### BenchmarkActivity 单页
 
@@ -348,4 +348,6 @@ android/
 | 车道提取 | 保持现有方法（论文定位为"先验知识"） |
 | 时间判定 | 代码实现简单滑动窗口（论文讨论高级方案方向） |
 | Android | 仅 YOLO 推理基准测试 |
+| 合成视频检测 | ground-truth 注入（YOLO 无法识别 Pillow 矩形色块），真实视频仍走 YOLO |
+| 短视频时间判定 | `finalize()` 以可用帧比率判定，解决视频 < 窗口大小的边界情况 |
 | 当前未提交改动 | 废弃，从新架构重写 |

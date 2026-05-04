@@ -2579,3 +2579,38 @@ git -C /home/yrd/documents/git_clone_code/etc/emergency-lane-demo commit -m "tes
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ```
+
+---
+
+## 实施记录 (2026-05-05)
+
+### Phase 5 中发现并修复的问题
+
+1. **YOLO 无法检测 Pillow 矩形色块**：合成视频使用 Pillow 绘制的彩色矩形代表车辆，但 YOLOv8n 训练于真实照片，无法识别。解决方案：
+   - `video_composer.py` 合成时同步写 `{video_id}.gt.json` 记录每帧 ground-truth 车辆位置
+   - `pipeline.py` 新增 `ground_truth` 可选参数，gt 存在时直接注入 Detection 对象
+   - `analysis.py` 检测 gt 文件存在则加载传入 pipeline
+   - 论文中定位：合成数据评估使用 ground-truth 标注，真实视频走 YOLO 检测路径
+
+2. **短视频时间判定漏检**：窗口 `window_frames` 未满时 `update()` 不做判定。修复：`finalize()` 新增短视频分支，以可用帧比率判定违规段。
+
+3. **Android namespace 不一致**：applicationId 为 `com.yrd.emergencylanemobile`，保留代码在 `com.example.emergencylaneguard`。统一为后者，删除 Compose 依赖。
+
+### 关键文件变更清单（Phase 5 修正）
+
+| 文件 | 变更 |
+|------|------|
+| `algorithm/pipeline.py` | `run()` + `_process_frame()` 新增 `ground_truth` 参数 |
+| `algorithm/temporal_judgment/violation_decider.py` | `finalize()` 处理视频 < 窗口大小 |
+| `backend/src/app/synthesis/video_composer.py` | 合成时写 `{video_id}.gt.json` |
+| `backend/src/app/routes/analysis.py` | 加载 gt.json 传入 pipeline |
+| `.gitignore` | `algorithm/*.pt` 排除模型文件 |
+
+### 端到端验证通过
+
+- 合成 API → 10s video + ground truth JSON
+- 分析 API → 1 违规段 (0-148 帧, 9.9s)
+- 结果 API → 可检索缓存
+- 前端构建 → 0 errors
+- 算法导入 → 全部模块 OK
+- Android 构建 → 47M APK
